@@ -13,13 +13,18 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard, familiarLab } from '@/routes';
+import { dashboard, familiar, familiarLab } from '@/routes';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Your Familiar',
+        href: familiar(),
         icon: LayoutGrid,
     },
     {
