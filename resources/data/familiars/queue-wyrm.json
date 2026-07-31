@@ -1,0 +1,191 @@
+{
+    "key": "queue-wyrm",
+    "name": "Queue Wyrm",
+    "version": 1,
+    "stages": {
+        "stage-1": {
+            "number": 1,
+            "idle": {
+                "kind": "sprite_sheet",
+                "src": "/assets/familiars/queue-wyrm/stage-1/idle/sprite-sheet.png",
+                "frameWidth": 128,
+                "frameHeight": 128,
+                "frameCount": 9,
+                "columns": 3,
+                "rows": 3,
+                "fps": null,
+                "loop": true,
+                "reducedMotionFallback": {
+                    "src": "/assets/familiars/queue-wyrm/stage-1/idle/sprite-sheet.png",
+                    "frame": 0
+                }
+            }
+        },
+        "stage-2": {
+            "number": 2,
+            "idle": {
+                "kind": "sprite_sheet",
+                "src": "/assets/familiars/queue-wyrm/stage-2/idle/sprite-sheet.png",
+                "frameWidth": 128,
+                "frameHeight": 128,
+                "frameCount": 9,
+                "columns": 3,
+                "rows": 3,
+                "fps": null,
+                "loop": true,
+                "reducedMotionFallback": {
+                    "src": "/assets/familiars/queue-wyrm/stage-2/idle/sprite-sheet.png",
+                    "frame": 0
+                }
+            }
+        },
+        "stage-3": {
+            "number": 3,
+            "idle": {
+                "kind": "sprite_sheet",
+                "src": "/assets/familiars/queue-wyrm/stage-3/idle/sprite-sheet.png",
+                "frameWidth": 128,
+                "frameHeight": 128,
+                "frameCount": 9,
+                "columns": 3,
+                "rows": 3,
+                "fps": null,
+                "loop": true,
+                "reducedMotionFallback": {
+                    "src": "/assets/familiars/queue-wyrm/stage-3/idle/sprite-sheet.png",
+                    "frame": 0
+                }
+            }
+        }
+    },
+    "evolutions": {
+        "stage-1-to-2": {
+            "sourceStage": "stage-1",
+            "destinationStage": "stage-2",
+            "animation": {
+                "kind": "sprite_sheet",
+                "src": "/assets/familiars/queue-wyrm/evolutions/stage-1-to-2/sprite-sheet.png",
+                "frameWidth": 128,
+                "frameHeight": 128,
+                "frameCount": 9,
+                "columns": 3,
+                "rows": 3,
+                "fps": null,
+                "loop": false,
+                "reducedMotionFallback": {
+                    "src": "/assets/familiars/queue-wyrm/evolutions/stage-1-to-2/sprite-sheet.png",
+                    "frame": 8
+                }
+            }
+        },
+        "stage-2-to-3": {
+            "sourceStage": "stage-2",
+            "destinationStage": "stage-3",
+            "animation": {
+                "kind": "sprite_sheet",
+                "src": "/assets/familiars/queue-wyrm/evolutions/stage-2-to-3/sprite-sheet.png",
+                "frameWidth": 128,
+                "frameHeight": 128,
+                "frameCount": 9,
+                "columns": 3,
+                "rows": 3,
+                "fps": null,
+                "loop": false,
+                "reducedMotionFallback": {
+                    "src": "/assets/familiars/queue-wyrm/evolutions/stage-2-to-3/sprite-sheet.png",
+                    "frame": 8
+                }
+            }
+        }
+    },
+    "overlays": {
+        "thinking": {
+            "key": "thinking",
+            "position": null,
+            "animation": {
+                "kind": "sprite_sheet",
+                "src": "/assets/familiars/queue-wyrm/overlays/thinking/sprite-sheet.png",
+                "frameWidth": 32,
+                "frameHeight": 32,
+                "frameCount": 9,
+                "columns": 3,
+                "rows": 3,
+                "fps": null,
+                "loop": true,
+                "reducedMotionFallback": {
+                    "src": "/assets/familiars/queue-wyrm/overlays/thinking/sprite-sheet.png",
+                    "frame": 0
+                }
+            }
+        },
+        "listening": {
+            "key": "listening",
+            "position": null,
+            "animation": {
+                "kind": "sprite_sheet",
+                "src": "/assets/familiars/queue-wyrm/overlays/listening/sprite-sheet.png",
+                "frameWidth": 32,
+                "frameHeight": 32,
+                "frameCount": 9,
+                "columns": 3,
+                "rows": 3,
+                "fps": null,
+                "loop": true,
+                "reducedMotionFallback": {
+                    "src": "/assets/familiars/queue-wyrm/overlays/listening/sprite-sheet.png",
+                    "frame": 0
+                }
+            }
+        }
+    },
+    "quests": {
+        "scroll-1": {
+            "key": "scroll-1",
+            "icon": {
+                "kind": "image",
+                "src": "/assets/familiars/queue-wyrm/quests/scroll-1/icon.png",
+                "frameWidth": 48,
+                "frameHeight": 48,
+                "frameCount": 1,
+                "columns": 1,
+                "rows": 1
+            }
+        },
+        "scroll-2": {
+            "key": "scroll-2",
+            "icon": {
+                "kind": "image",
+                "src": "/assets/familiars/queue-wyrm/quests/scroll-2/icon.png",
+                "frameWidth": 48,
+                "frameHeight": 48,
+                "frameCount": 1,
+                "columns": 1,
+                "rows": 1
+            }
+        },
+        "observatory-lens": {
+            "key": "observatory-lens",
+            "icon": {
+                "kind": "image",
+                "src": "/assets/familiars/queue-wyrm/quests/observatory-lens/icon.png",
+                "frameWidth": 48,
+                "frameHeight": 48,
+                "frameCount": 1,
+                "columns": 1,
+                "rows": 1
+            }
+        },
+        "magical-book": {
+            "key": "magical-book",
+            "icon": {
+                "kind": "image",
+                "src": "/assets/familiars/queue-wyrm/quests/magical-book/icon.png",
+                "frameWidth": 48,
+                "frameHeight": 48,
+                "frameCount": 1,
+                "columns": 1,
+                "rows": 1
+            }
+        }
+    }
+}
