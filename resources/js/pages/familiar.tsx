@@ -1,19 +1,29 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, useHttp } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
+import AskPrototypeInterviewGuideController from '@/actions/App/Http/Controllers/AskPrototypeInterviewGuideController';
 import CompletePrototypeQuestController from '@/actions/App/Http/Controllers/CompletePrototypeQuestController';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { FamiliarOverlay } from '@/features/familiars/components/familiar-overlay';
 import { SpriteSheetAnimation } from '@/features/familiars/components/sprite-sheet-animation';
 import { familiar as familiarRoute } from '@/routes';
 import type { FamiliarManifest } from '@/types/familiars';
 import type {
+    FamiliarReaction,
     PersistentFamiliarStage,
     PrototypeQuestKey,
 } from '@/types/progression';
 
 type OverlayState = 'thinking' | 'listening' | null;
 type EvolutionKey = 'stage-1-to-2' | 'stage-2-to-3' | null;
+
+interface InterviewGuideResponse {
+    message: string;
+    reaction: FamiliarReaction;
+    suggested_quest: PrototypeQuestKey | null;
+}
 
 interface Familiar {
     public_id: string;
@@ -91,6 +101,13 @@ export default function Familiar({
     const [evolution, setEvolution] = useState<EvolutionKey>(null);
     const [reducedMotion, setReducedMotion] = useState(false);
     const [liveMessage, setLiveMessage] = useState('');
+    const [questionFocused, setQuestionFocused] = useState(false);
+    const [guideResponse, setGuideResponse] =
+        useState<InterviewGuideResponse | null>(null);
+    const [guideError, setGuideError] = useState<string | null>(null);
+    const guideForm = useHttp<{ message: string }, InterviewGuideResponse>({
+        message: '',
+    });
     const previousStage = useRef(familiar.stage);
     const celebrationTimeout = useRef<number | undefined>(undefined);
 
@@ -140,6 +157,11 @@ export default function Familiar({
     const activeAnimation = evolution
         ? manifest.evolutions[evolution].animation
         : manifest.stages[stageKey].idle;
+    const activeOverlay = guideForm.processing
+        ? 'thinking'
+        : questionFocused
+          ? 'listening'
+          : overlay;
 
     const evolutionProgress =
         familiar.stage === 'summoned'
@@ -173,6 +195,36 @@ export default function Familiar({
         );
     }
 
+    function askGuide(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setGuideError(null);
+        void guideForm
+            .post(AskPrototypeInterviewGuideController().url, {
+                onSuccess: (response) => {
+                    setGuideResponse(response);
+                    guideForm.reset();
+                    triggerCelebration(
+                        'Queue Wyrm has answered your question.',
+                    );
+                },
+                onError: () =>
+                    setLiveMessage(
+                        'Please correct the question and try again.',
+                    ),
+                onHttpException: (response) => {
+                    const payload = JSON.parse(response.data) as {
+                        message?: string;
+                    };
+
+                    setGuideError(
+                        payload.message ??
+                            'Queue Wyrm is unavailable right now. Please try again soon.',
+                    );
+                },
+            })
+            .catch(() => undefined);
+    }
+
     return (
         <>
             <Head title="Your Familiar" />
@@ -204,9 +256,11 @@ export default function Familiar({
                                     reducedMotion={reducedMotion}
                                     onComplete={() => setEvolution(null)}
                                 />
-                                {overlay && (
+                                {activeOverlay && (
                                     <FamiliarOverlay
-                                        overlay={manifest.overlays[overlay]}
+                                        overlay={
+                                            manifest.overlays[activeOverlay]
+                                        }
                                         isPlaying
                                         playbackRate={1}
                                         reducedMotion={reducedMotion}
@@ -248,6 +302,125 @@ export default function Familiar({
                                     Listening
                                 </Button>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Ask your familiar</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <form className="space-y-3" onSubmit={askGuide}>
+                                <Label htmlFor="interview-question">
+                                    Short interview-preparation question
+                                </Label>
+                                <Input
+                                    aria-describedby="interview-question-help"
+                                    aria-invalid={Boolean(
+                                        guideForm.errors.message,
+                                    )}
+                                    disabled={guideForm.processing}
+                                    id="interview-question"
+                                    maxLength={1000}
+                                    onBlur={() => setQuestionFocused(false)}
+                                    onChange={(event) =>
+                                        guideForm.setData(
+                                            'message',
+                                            event.target.value,
+                                        )
+                                    }
+                                    onFocus={() => setQuestionFocused(true)}
+                                    placeholder="How can I make a STAR answer more specific?"
+                                    value={guideForm.data.message}
+                                />
+                                <p
+                                    className="text-sm text-muted-foreground"
+                                    id="interview-question-help"
+                                >
+                                    Queue Wyrm gives concise, general guidance.
+                                </p>
+                                {guideForm.errors.message && (
+                                    <p className="text-sm text-destructive">
+                                        {guideForm.errors.message}
+                                    </p>
+                                )}
+                                {guideError && (
+                                    <p className="text-sm text-destructive">
+                                        {guideError}
+                                    </p>
+                                )}
+                                <Button
+                                    disabled={
+                                        guideForm.processing ||
+                                        guideForm.data.message.trim().length ===
+                                            0
+                                    }
+                                    type="submit"
+                                >
+                                    {guideForm.processing
+                                        ? 'Queue Wyrm is thinking…'
+                                        : 'Ask Queue Wyrm'}
+                                </Button>
+                            </form>
+
+                            {guideResponse && (
+                                <div className="rounded-lg border bg-muted/40 p-3">
+                                    <div className="flex items-start gap-2">
+                                        <span
+                                            aria-hidden="true"
+                                            className={
+                                                guideResponse.reaction ===
+                                                'encouraging'
+                                                    ? 'motion-safe:animate-bounce'
+                                                    : guideResponse.reaction ===
+                                                        'challenging'
+                                                      ? 'motion-safe:animate-pulse'
+                                                      : ''
+                                            }
+                                        >
+                                            {guideResponse.reaction ===
+                                            'encouraging'
+                                                ? '✦'
+                                                : guideResponse.reaction ===
+                                                    'challenging'
+                                                  ? '◆'
+                                                  : guideResponse.reaction ===
+                                                      'clarifying'
+                                                    ? '?'
+                                                    : '•'}
+                                        </span>
+                                        <p className="text-sm">
+                                            {guideResponse.message}
+                                        </p>
+                                    </div>
+                                    {guideResponse.suggested_quest && (
+                                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                                            <p className="text-xs text-muted-foreground">
+                                                Suggested next step: this
+                                                remains optional.
+                                            </p>
+                                            <Button
+                                                onClick={() => {
+                                                    const quest =
+                                                        prototypeQuests.find(
+                                                            (candidate) =>
+                                                                candidate.key ===
+                                                                guideResponse.suggested_quest,
+                                                        );
+
+                                                    if (quest) {
+                                                        completeQuest(quest);
+                                                    }
+                                                }}
+                                                size="sm"
+                                                variant="outline"
+                                            >
+                                                Complete suggested quest
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

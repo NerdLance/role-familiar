@@ -9,3 +9,6 @@ export type PrototypeQuestKey =
 
 export type ProgressionEventType =
     'familiar_summoned' | 'quest_completed' | 'familiar_evolved';
+
+export type FamiliarReaction =
+    'neutral' | 'encouraging' | 'challenging' | 'clarifying';

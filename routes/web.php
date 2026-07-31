@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AskPrototypeInterviewGuideController;
 use App\Http\Controllers\CompletePrototypeQuestController;
 use App\Http\Controllers\FamiliarController;
 use App\Http\Controllers\FamiliarLabController;
@@ -12,6 +13,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('familiar-lab', FamiliarLabController::class)->name('familiar-lab');
     Route::get('familiar', FamiliarController::class)->name('familiar');
     Route::post('familiar/{familiar}/quests', CompletePrototypeQuestController::class)->name('familiar.quests.complete');
+    Route::post('familiar/interview-guide', AskPrototypeInterviewGuideController::class)
+        ->middleware('throttle:10,1')
+        ->name('familiar.interview-guide');
 });
 
 require __DIR__.'/settings.php';
