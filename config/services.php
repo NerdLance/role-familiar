@@ -20,6 +20,9 @@ return [
 
     'resend' => [
         'key' => env('RESEND_API_KEY'),
+        'templates' => [
+            'email_verification' => env('RESEND_EMAIL_VERIFICATION_TEMPLATE', 'rolefamiliar-email-verification'),
+        ],
     ],
 
     'ses' => [

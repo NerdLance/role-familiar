@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use LogicException;
+use Resend;
+use Resend\Client;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,7 +21,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(Client::class, function (): Client {
+            $apiKey = config('services.resend.key');
+
+            if (! is_string($apiKey) || blank($apiKey)) {
+                throw new LogicException('The Resend API key is not configured.');
+            }
+
+            return Resend::client($apiKey);
+        });
     }
 
     /**

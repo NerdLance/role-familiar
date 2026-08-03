@@ -1,7 +1,8 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\Channels\ResendChannel;
+use App\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 
@@ -18,7 +19,11 @@ test('sends verification notification', function () {
         ->post(route('verification.send'))
         ->assertRedirect(route('home'));
 
-    Notification::assertSentTo($user, VerifyEmail::class);
+    Notification::assertSentTo(
+        $user,
+        VerifyEmail::class,
+        fn (VerifyEmail $notification, array $channels): bool => $channels === [ResendChannel::class],
+    );
 });
 
 test('does not send verification notification if email is verified', function () {
@@ -31,4 +36,22 @@ test('does not send verification notification if email is verified', function ()
         ->assertRedirect(route('dashboard', absolute: false));
 
     Notification::assertNothingSent();
+});
+
+test('verification resend remains limited to six requests per minute', function () {
+    Notification::fake();
+
+    $user = User::factory()->unverified()->create();
+
+    foreach (range(1, 6) as $attempt) {
+        $this->actingAs($user)
+            ->post(route('verification.send'))
+            ->assertRedirect(route('home'));
+    }
+
+    $this->actingAs($user)
+        ->post(route('verification.send'))
+        ->assertTooManyRequests();
+
+    Notification::assertSentToTimes($user, VerifyEmail::class, 6);
 });

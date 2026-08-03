@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\User;
+use App\Notifications\Channels\ResendChannel;
+use App\Notifications\VerifyEmail;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -13,6 +17,8 @@ test('registration screen can be rendered', function () {
 });
 
 test('new users can register', function () {
+    Notification::fake();
+
     $response = $this->post(route('register.store'), [
         'name' => 'Test User',
         'email' => 'test@example.com',
@@ -22,4 +28,12 @@ test('new users can register', function () {
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('dashboard', absolute: false));
+
+    $user = User::query()->where('email', 'test@example.com')->sole();
+
+    Notification::assertSentTo(
+        $user,
+        VerifyEmail::class,
+        fn (VerifyEmail $notification, array $channels): bool => $channels === [ResendChannel::class],
+    );
 });
