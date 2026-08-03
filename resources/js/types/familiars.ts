@@ -1,3 +1,36 @@
+import type { FamiliarReaction, PrototypeQuestKey } from '@/types/progression';
+
+export type CoachingNextActionType =
+    | 'ask_follow_up'
+    | 'practice_question'
+    | 'explain_topic'
+    | 'review_answer'
+    | 'none';
+
+export interface CoachingRoleConnection {
+    topic: string;
+    explanation: string;
+}
+
+export interface CoachingUncertainty {
+    topic: string;
+    explanation: string;
+}
+
+export interface CoachingNextAction {
+    type: CoachingNextActionType;
+    label: string;
+}
+
+export interface RoleGroundedCoachingResponse {
+    message: string;
+    role_connections: CoachingRoleConnection[];
+    uncertainties: CoachingUncertainty[];
+    suggested_next_action: CoachingNextAction | null;
+    reaction: FamiliarReaction;
+    suggested_quest: PrototypeQuestKey | null;
+}
+
 export type FamiliarStageKey = 'stage-1' | 'stage-2' | 'stage-3';
 
 export interface ReducedMotionFallback {

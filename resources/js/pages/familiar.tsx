@@ -9,21 +9,20 @@ import { Label } from '@/components/ui/label';
 import { FamiliarOverlay } from '@/features/familiars/components/familiar-overlay';
 import { SpriteSheetAnimation } from '@/features/familiars/components/sprite-sheet-animation';
 import { familiar as familiarRoute } from '@/routes';
-import { edit as editTargetRole } from '@/routes/target-roles';
-import type { FamiliarManifest } from '@/types/familiars';
+import {
+    edit as editTargetRole,
+    index as targetRoles,
+} from '@/routes/target-roles';
 import type {
-    FamiliarReaction,
+    FamiliarManifest,
+    RoleGroundedCoachingResponse,
+} from '@/types/familiars';
+import type {
     PersistentFamiliarStage,
     PrototypeQuestKey,
 } from '@/types/progression';
 
 type EvolutionKey = 'stage-1-to-2' | 'stage-2-to-3' | null;
-
-interface InterviewGuideResponse {
-    message: string;
-    reaction: FamiliarReaction;
-    suggested_quest: PrototypeQuestKey | null;
-}
 
 interface Familiar {
     public_id: string;
@@ -106,6 +105,25 @@ function evolutionBetween(
     return null;
 }
 
+function readErrorMessage(payload: string): string | null {
+    try {
+        const decoded: unknown = JSON.parse(payload);
+
+        if (
+            typeof decoded === 'object' &&
+            decoded !== null &&
+            'message' in decoded &&
+            typeof decoded.message === 'string'
+        ) {
+            return decoded.message;
+        }
+    } catch {
+        return null;
+    }
+
+    return null;
+}
+
 function RoleList({ title, items }: { title: string; items: string[] }) {
     return (
         <section className="min-w-0 space-y-2">
@@ -148,14 +166,16 @@ export default function Familiar({
     const [liveMessage, setLiveMessage] = useState('');
     const [isTypingQuestion, setIsTypingQuestion] = useState(false);
     const [guideResponse, setGuideResponse] =
-        useState<InterviewGuideResponse | null>(null);
+        useState<RoleGroundedCoachingResponse | null>(null);
     const [guideError, setGuideError] = useState<string | null>(null);
-    const guideForm = useHttp<{ message: string }, InterviewGuideResponse>({
-        message: '',
-    });
+    const guideForm = useHttp<
+        { message: string },
+        RoleGroundedCoachingResponse
+    >({ message: '' });
     const currentStage = familiar?.stage ?? 'summoned';
     const previousStage = useRef(currentStage);
     const celebrationTimeout = useRef<number | undefined>(undefined);
+    const guideSubmissionInFlight = useRef(false);
     const typingTimeout = useRef<number | undefined>(undefined);
 
     useEffect(() => {
@@ -253,8 +273,16 @@ export default function Familiar({
 
     function askGuide(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
+
+        if (guideSubmissionInFlight.current || guideForm.processing) {
+            return;
+        }
+
+        guideSubmissionInFlight.current = true;
         setGuideError(null);
+        setGuideResponse(null);
         setIsTypingQuestion(false);
+        setLiveMessage('Queue Wyrm is thinking about your question.');
         void guideForm
             .post(AskPrototypeInterviewGuideController().url, {
                 onSuccess: (response) => {
@@ -269,21 +297,37 @@ export default function Familiar({
                         'Please correct the question and try again.',
                     ),
                 onHttpException: (response) => {
-                    const payload = JSON.parse(response.data) as {
-                        message?: string;
-                    };
+                    const message = readErrorMessage(response.data);
 
                     setGuideError(
-                        payload.message ??
+                        message ??
+                            'Queue Wyrm is unavailable right now. Please try again soon.',
+                    );
+                    setLiveMessage(
+                        message ??
                             'Queue Wyrm is unavailable right now. Please try again soon.',
                     );
                 },
+                onNetworkError: () => {
+                    const message =
+                        'Queue Wyrm could not connect. Check your connection and try again.';
+
+                    setGuideError(message);
+                    setLiveMessage(message);
+                },
+                onFinish: () => {
+                    guideSubmissionInFlight.current = false;
+                },
             })
-            .catch(() => undefined);
+            .catch(() => {
+                guideSubmissionInFlight.current = false;
+            });
     }
 
     function noteQuestionTyping(value: string) {
         guideForm.setData('message', value);
+        guideForm.clearErrors('message');
+        setGuideError(null);
         setIsTypingQuestion(true);
 
         if (typingTimeout.current) {
@@ -404,6 +448,11 @@ export default function Familiar({
                                 1 Queue Wyrm and begin role-specific
                                 progression.
                             </p>
+                            <Button asChild>
+                                <Link href={targetRoles()}>
+                                    Create or confirm a target role
+                                </Link>
+                            </Button>
                         </CardContent>
                     </Card>
                 )}
@@ -447,14 +496,38 @@ export default function Familiar({
                         <Card>
                             <CardHeader>
                                 <CardTitle>Ask your familiar</CardTitle>
+                                <p className="text-sm text-muted-foreground">
+                                    Queue Wyrm will answer using your confirmed{' '}
+                                    <span className="font-medium text-foreground">
+                                        {targetRole?.title}
+                                        {targetRole?.company_name
+                                            ? ` at ${targetRole.company_name}`
+                                            : ''}
+                                    </span>{' '}
+                                    role.
+                                </p>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <form className="space-y-3" onSubmit={askGuide}>
+                                <form
+                                    aria-busy={guideForm.processing}
+                                    className="space-y-3"
+                                    onSubmit={askGuide}
+                                >
                                     <Label htmlFor="interview-question">
                                         Short interview-preparation question
                                     </Label>
                                     <Input
-                                        aria-describedby="interview-question-help"
+                                        aria-describedby={[
+                                            'interview-question-help',
+                                            guideForm.errors.message
+                                                ? 'interview-question-error'
+                                                : null,
+                                            guideError
+                                                ? 'interview-guide-error'
+                                                : null,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' ')}
                                         aria-invalid={Boolean(
                                             guideForm.errors.message,
                                         )}
@@ -477,15 +550,24 @@ export default function Familiar({
                                         id="interview-question-help"
                                     >
                                         Queue Wyrm gives concise, general
-                                        guidance.
+                                        coaching grounded in your reviewed role
+                                        information.
                                     </p>
                                     {guideForm.errors.message && (
-                                        <p className="text-sm text-destructive">
+                                        <p
+                                            className="text-sm text-destructive"
+                                            id="interview-question-error"
+                                            role="alert"
+                                        >
                                             {guideForm.errors.message}
                                         </p>
                                     )}
                                     {guideError && (
-                                        <p className="text-sm text-destructive">
+                                        <p
+                                            className="text-sm text-destructive"
+                                            id="interview-guide-error"
+                                            role="alert"
+                                        >
                                             {guideError}
                                         </p>
                                     )}
@@ -504,7 +586,10 @@ export default function Familiar({
                                 </form>
 
                                 {guideResponse && (
-                                    <div className="rounded-lg border bg-muted/40 p-3">
+                                    <section
+                                        aria-labelledby="coaching-answer-title"
+                                        className="space-y-4 rounded-lg border bg-muted/40 p-3"
+                                    >
                                         <div className="flex items-start gap-2">
                                             <span
                                                 aria-hidden="true"
@@ -529,39 +614,107 @@ export default function Familiar({
                                                         ? '?'
                                                         : '•'}
                                             </span>
-                                            <p className="text-sm">
-                                                {guideResponse.message}
-                                            </p>
-                                        </div>
-                                        {guideResponse.suggested_quest && (
-                                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                                                <p className="text-xs text-muted-foreground">
-                                                    Suggested next step: this
-                                                    remains optional.
-                                                </p>
-                                                <Button
-                                                    onClick={() => {
-                                                        const quest =
-                                                            prototypeQuests.find(
-                                                                (candidate) =>
-                                                                    candidate.key ===
-                                                                    guideResponse.suggested_quest,
-                                                            );
-
-                                                        if (quest) {
-                                                            completeQuest(
-                                                                quest,
-                                                            );
-                                                        }
-                                                    }}
-                                                    size="sm"
-                                                    variant="outline"
+                                            <div className="min-w-0 space-y-1">
+                                                <h3
+                                                    className="text-sm font-semibold"
+                                                    id="coaching-answer-title"
                                                 >
-                                                    Complete suggested quest
-                                                </Button>
+                                                    Coaching answer
+                                                </h3>
+                                                <p className="text-sm break-words">
+                                                    {guideResponse.message}
+                                                </p>
                                             </div>
+                                        </div>
+                                        {guideResponse.role_connections.length >
+                                            0 && (
+                                            <section className="space-y-2">
+                                                <h3 className="text-sm font-semibold">
+                                                    Connections to your
+                                                    confirmed role
+                                                </h3>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Based on your reviewed role
+                                                    information, not citations
+                                                    to the original listing.
+                                                </p>
+                                                <ul className="space-y-2">
+                                                    {guideResponse.role_connections.map(
+                                                        (connection) => (
+                                                            <li
+                                                                className="text-sm"
+                                                                key={`${connection.topic}-${connection.explanation}`}
+                                                            >
+                                                                <span className="font-medium">
+                                                                    {
+                                                                        connection.topic
+                                                                    }
+                                                                    :{' '}
+                                                                </span>
+                                                                <span className="text-muted-foreground">
+                                                                    {
+                                                                        connection.explanation
+                                                                    }
+                                                                </span>
+                                                            </li>
+                                                        ),
+                                                    )}
+                                                </ul>
+                                            </section>
                                         )}
-                                    </div>
+                                        {guideResponse.uncertainties.length >
+                                            0 && (
+                                            <section className="space-y-2">
+                                                <h3 className="text-sm font-semibold">
+                                                    Missing or unresolved
+                                                    information
+                                                </h3>
+                                                <ul className="space-y-2">
+                                                    {guideResponse.uncertainties.map(
+                                                        (uncertainty) => (
+                                                            <li
+                                                                className="text-sm"
+                                                                key={`${uncertainty.topic}-${uncertainty.explanation}`}
+                                                            >
+                                                                <span className="font-medium">
+                                                                    {
+                                                                        uncertainty.topic
+                                                                    }
+                                                                    :{' '}
+                                                                </span>
+                                                                <span className="text-muted-foreground">
+                                                                    {
+                                                                        uncertainty.explanation
+                                                                    }
+                                                                </span>
+                                                            </li>
+                                                        ),
+                                                    )}
+                                                </ul>
+                                            </section>
+                                        )}
+                                        {guideResponse.suggested_next_action &&
+                                            guideResponse.suggested_next_action
+                                                .type !== 'none' && (
+                                                <section className="space-y-1 border-t pt-3">
+                                                    <h3 className="text-sm font-semibold">
+                                                        Suggested next action
+                                                    </h3>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {
+                                                            guideResponse
+                                                                .suggested_next_action
+                                                                .label
+                                                        }
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        This is optional and
+                                                        does not change quests,
+                                                        progress, or your role.
+                                                    </p>
+                                                </section>
+                                            )}
+                                    </section>
                                 )}
                             </CardContent>
                         </Card>

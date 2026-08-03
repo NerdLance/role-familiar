@@ -3,15 +3,16 @@
 namespace App\Ai\Exceptions;
 
 use RuntimeException;
+use Throwable;
 
-class PrototypeInterviewGuideException extends RuntimeException
+class RoleGroundedCoachingException extends RuntimeException
 {
     public function __construct(
         public readonly string $reason,
         /** @var array<string, bool|int|string> */
         public readonly array $context = [],
-        ?\Throwable $previous = null,
+        ?Throwable $previous = null,
     ) {
-        parent::__construct('Prototype interview guide failed.', previous: $previous);
+        parent::__construct('Role-grounded coaching failed.', previous: $previous);
     }
 }

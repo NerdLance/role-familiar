@@ -15,7 +15,16 @@ class AskPrototypeInterviewGuideRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'message' => ['required', 'string', 'max:1000'],
+            'message' => ['required', 'string', 'not_regex:/^\s*$/u', 'max:1000'],
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'message.required' => 'Please enter a question.',
+            'message.not_regex' => 'Please enter a question.',
         ];
     }
 }
