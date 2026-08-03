@@ -7,6 +7,7 @@ use App\Enums\FamiliarReaction;
 use App\Enums\PrototypeQuestKey;
 use App\Models\User;
 use App\Models\UserFamiliar;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 beforeEach(function (): void {
@@ -86,25 +87,42 @@ test('an allowed quest suggestion remains a response value only', function () {
 });
 
 test('invalid structured output is handled without exposing provider data', function () {
+    Log::spy();
+
     PrototypeInterviewGuide::fake([[
         'message' => 'This should not reach the browser.',
         'reaction' => 'invented_reaction',
         'suggested_quest' => null,
     ]]);
 
-    $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->create())
         ->postJson(route('familiar.interview-guide'), ['message' => 'A private interview detail'])
-        ->assertServiceUnavailable()
-        ->assertExactJson(['message' => 'Queue Wyrm needs a moment. Please try again soon.']);
+        ->assertServiceUnavailable();
+
+    expect($response->json('message'))
+        ->toStartWith('Queue Wyrm needs a moment. Please try again soon. Reference:')
+        ->not->toContain('A private interview detail');
+
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->withArgs(function (string $event, array $context): bool {
+            return $event === 'Prototype interview guide request failed.'
+                && $context['category'] === 'prototype_response'
+                && $context['reason'] === 'invalid_reaction'
+                && is_string($context['reference'])
+                && $context['message_length'] === 26
+                && ! array_key_exists('message', $context);
+        });
 });
 
 test('missing model configuration prevents an external prompt', function () {
     config(['ai.providers.openai.models.text.default' => null]);
 
-    $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->create())
         ->postJson(route('familiar.interview-guide'), ['message' => 'How do I prepare?'])
-        ->assertServiceUnavailable()
-        ->assertExactJson(['message' => 'Queue Wyrm needs a moment. Please try again soon.']);
+        ->assertServiceUnavailable();
+
+    expect($response->json('message'))->toStartWith('Queue Wyrm needs a moment. Please try again soon. Reference:');
 
     PrototypeInterviewGuide::assertNeverPrompted();
 });
@@ -114,10 +132,11 @@ test('provider failures return a controlled response', function () {
         fn (): never => throw new RuntimeException('provider failure'),
     ]);
 
-    $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->create())
         ->postJson(route('familiar.interview-guide'), ['message' => 'How should I prepare?'])
-        ->assertServiceUnavailable()
-        ->assertExactJson(['message' => 'Queue Wyrm is unavailable right now. Please try again soon.']);
+        ->assertServiceUnavailable();
+
+    expect($response->json('message'))->toStartWith('Queue Wyrm is unavailable right now. Please try again soon. Reference:');
 });
 
 test('the guide endpoint is throttled for authenticated users', function () {

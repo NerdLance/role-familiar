@@ -16,7 +16,6 @@ import type {
     PrototypeQuestKey,
 } from '@/types/progression';
 
-type OverlayState = 'thinking' | 'listening' | null;
 type EvolutionKey = 'stage-1-to-2' | 'stage-2-to-3' | null;
 
 interface InterviewGuideResponse {
@@ -96,12 +95,11 @@ export default function Familiar({
     familiar: Familiar;
     manifest: FamiliarManifest;
 }) {
-    const [overlay, setOverlay] = useState<OverlayState>(null);
     const [celebrating, setCelebrating] = useState(false);
     const [evolution, setEvolution] = useState<EvolutionKey>(null);
     const [reducedMotion, setReducedMotion] = useState(false);
     const [liveMessage, setLiveMessage] = useState('');
-    const [questionFocused, setQuestionFocused] = useState(false);
+    const [isTypingQuestion, setIsTypingQuestion] = useState(false);
     const [guideResponse, setGuideResponse] =
         useState<InterviewGuideResponse | null>(null);
     const [guideError, setGuideError] = useState<string | null>(null);
@@ -110,6 +108,7 @@ export default function Familiar({
     });
     const previousStage = useRef(familiar.stage);
     const celebrationTimeout = useRef<number | undefined>(undefined);
+    const typingTimeout = useRef<number | undefined>(undefined);
 
     useEffect(() => {
         const mediaQuery = window.matchMedia(
@@ -127,6 +126,10 @@ export default function Familiar({
         () => () => {
             if (celebrationTimeout.current) {
                 window.clearTimeout(celebrationTimeout.current);
+            }
+
+            if (typingTimeout.current) {
+                window.clearTimeout(typingTimeout.current);
             }
         },
         [],
@@ -159,9 +162,9 @@ export default function Familiar({
         : manifest.stages[stageKey].idle;
     const activeOverlay = guideForm.processing
         ? 'thinking'
-        : questionFocused
+        : isTypingQuestion
           ? 'listening'
-          : overlay;
+          : null;
 
     const evolutionProgress =
         familiar.stage === 'summoned'
@@ -198,6 +201,7 @@ export default function Familiar({
     function askGuide(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setGuideError(null);
+        setIsTypingQuestion(false);
         void guideForm
             .post(AskPrototypeInterviewGuideController().url, {
                 onSuccess: (response) => {
@@ -223,6 +227,20 @@ export default function Familiar({
                 },
             })
             .catch(() => undefined);
+    }
+
+    function noteQuestionTyping(value: string) {
+        guideForm.setData('message', value);
+        setIsTypingQuestion(true);
+
+        if (typingTimeout.current) {
+            window.clearTimeout(typingTimeout.current);
+        }
+
+        typingTimeout.current = window.setTimeout(
+            () => setIsTypingQuestion(false),
+            700,
+        );
     }
 
     return (
@@ -275,33 +293,6 @@ export default function Familiar({
                                     </span>
                                 )}
                             </div>
-
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                <Button
-                                    onClick={() =>
-                                        setOverlay(
-                                            overlay === 'thinking'
-                                                ? null
-                                                : 'thinking',
-                                        )
-                                    }
-                                    variant="outline"
-                                >
-                                    Thinking
-                                </Button>
-                                <Button
-                                    onClick={() =>
-                                        setOverlay(
-                                            overlay === 'listening'
-                                                ? null
-                                                : 'listening',
-                                        )
-                                    }
-                                    variant="outline"
-                                >
-                                    Listening
-                                </Button>
-                            </div>
                         </CardContent>
                     </Card>
 
@@ -322,14 +313,10 @@ export default function Familiar({
                                     disabled={guideForm.processing}
                                     id="interview-question"
                                     maxLength={1000}
-                                    onBlur={() => setQuestionFocused(false)}
+                                    onBlur={() => setIsTypingQuestion(false)}
                                     onChange={(event) =>
-                                        guideForm.setData(
-                                            'message',
-                                            event.target.value,
-                                        )
+                                        noteQuestionTyping(event.target.value)
                                     }
-                                    onFocus={() => setQuestionFocused(true)}
                                     placeholder="How can I make a STAR answer more specific?"
                                     value={guideForm.data.message}
                                 />

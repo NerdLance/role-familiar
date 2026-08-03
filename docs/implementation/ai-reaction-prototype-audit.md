@@ -8,7 +8,9 @@ This is the first minimal OpenAI interaction for Role Familiar. It accepts one s
 
 `App\Ai\Agents\PrototypeInterviewGuide` is a Laravel AI SDK `Promptable` agent implementing `HasStructuredOutput`. It is explicitly configured for the SDK's `Lab::OpenAI` provider, with the text model read from `ai.providers.openai.models.text.default` (`ROLE_FAMILIAR_TEXT_MODEL`) rather than hardcoded in application code.
 
-`AskPrototypeInterviewGuide` checks configuration, invokes the agent, requires a `StructuredAgentResponse`, and maps it through `PrototypeInterviewGuideResponse`. The mapper rejects missing, oversized, or arbitrary reaction and quest keys. The controller exposes only a generic Inertia flash response on unavailable configuration, provider failure, timeout, rate limiting, or malformed output; provider messages and keys are not exposed or logged.
+`AskPrototypeInterviewGuide` checks configuration, invokes the agent, requires a `StructuredAgentResponse`, and maps it through `PrototypeInterviewGuideResponse`. The mapper rejects missing, oversized, or arbitrary reaction and quest keys. The controller exposes a generic JSON response for the Inertia v3 standalone HTTP request on unavailable configuration, provider failure, timeout, rate limiting, or malformed output.
+
+Every handled failure receives a UUIDv7 reference and an application warning log entry. The entry records only safe diagnostic metadata: failure category, exception class/code, internal contract reason, optional type or length metadata, authenticated user ID, and submitted-message length. It deliberately excludes the submitted question, model answer, raw provider payload/error text, and API keys.
 
 ## Response contract
 
@@ -24,7 +26,7 @@ The SDK JSON schema and the response mapper both enforce the finite reaction and
 
 ## Familiar behavior
 
-On `/familiar`, input focus takes precedence as a listening overlay. Submission immediately switches the transient overlay to thinking, disables duplicate submission, and returns to the normal familiar state on completion. A controlled reaction renders a small reduced-motion-safe CSS/SVG-equivalent glyph effect. A suggested quest is only an explicit button; it is never auto-completed. No AI request changes persistent familiar stage or quest progress.
+On `/familiar`, the listening overlay appears only while the user is actively typing and clears after 700 ms of inactivity or input blur. A pending standalone HTTP request always takes precedence and displays the thinking overlay until it completes, then returns to the normal familiar state. The request disables duplicate submission. A controlled reaction renders a small reduced-motion-safe CSS/SVG-equivalent glyph effect. A suggested quest is only an explicit button; it is never auto-completed. No AI request changes persistent familiar stage or quest progress.
 
 ## Verification
 

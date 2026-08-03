@@ -18,7 +18,7 @@ class AskPrototypeInterviewGuide
         $response = $this->guide->prompt($message);
 
         if (! $response instanceof StructuredAgentResponse) {
-            throw new PrototypeInterviewGuideException('The guide did not return structured output.');
+            throw new PrototypeInterviewGuideException('unstructured_response');
         }
 
         return PrototypeInterviewGuideResponse::fromStructured($response->toArray());
@@ -27,7 +27,7 @@ class AskPrototypeInterviewGuide
     private function ensureConfigured(): void
     {
         if (blank(config('ai.providers.openai.key')) || blank(config('ai.providers.openai.models.text.default'))) {
-            throw new PrototypeInterviewGuideException('The prototype interview guide is unavailable.');
+            throw new PrototypeInterviewGuideException('missing_configuration');
         }
     }
 }

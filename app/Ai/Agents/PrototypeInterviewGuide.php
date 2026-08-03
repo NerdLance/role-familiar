@@ -39,7 +39,7 @@ INSTRUCTIONS;
     public function schema(JsonSchema $schema): array
     {
         return [
-            'message' => $schema->string()->min(1)->max(700)->required(),
+            'message' => $schema->string()->min(1)->max(1200)->required(),
             'reaction' => $schema->string()->enum(FamiliarReaction::class)->required(),
             'suggested_quest' => $schema->string()->enum(PrototypeQuestKey::class)->nullable(),
         ];
