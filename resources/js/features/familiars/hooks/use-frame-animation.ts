@@ -24,7 +24,7 @@ export function useFrameAnimation({
         value: 'loading' | 'ready' | 'error';
     }>({ key: '', value: 'loading' });
     const [documentVisible, setDocumentVisible] = useState(
-        () => !document.hidden,
+        () => typeof document === 'undefined' || !document.hidden,
     );
     const completedRef = useRef(false);
     const source =

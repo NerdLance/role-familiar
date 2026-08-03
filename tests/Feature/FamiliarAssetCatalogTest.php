@@ -63,3 +63,12 @@ test('the familiar asset validation command succeeds', function () {
         ->expectsOutput('Queue Wyrm asset manifest is valid (version 1).')
         ->assertSuccessful();
 });
+
+test('the familiar animation hook is safe during server rendering', function () {
+    $hook = file_get_contents(resource_path('js/features/familiars/hooks/use-frame-animation.ts'));
+
+    expect($hook)
+        ->toContain("typeof document === 'undefined' || !document.hidden")
+        ->toContain("document.addEventListener('visibilitychange'")
+        ->toContain('reducedMotion ||');
+});

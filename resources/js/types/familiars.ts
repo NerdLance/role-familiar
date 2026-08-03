@@ -26,10 +26,10 @@ export interface FamiliarNextAction {
 }
 
 export interface RoleGroundedCoachingResponse {
-    title: string;
+    title?: string | null;
     content: string;
     reaction: FamiliarReaction;
-    next_actions: FamiliarNextAction[];
+    next_actions?: FamiliarNextAction[];
 }
 
 export type FamiliarStageKey = 'stage-1' | 'stage-2' | 'stage-3';

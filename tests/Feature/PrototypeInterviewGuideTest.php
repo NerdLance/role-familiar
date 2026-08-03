@@ -139,48 +139,94 @@ test('the coaching request enforces intent specific fields and rejects unknown i
     ], ['request']],
 ]);
 
-test('the Familiar client uses the bounded coaching contract and accessible one-shot interaction', function () {
+test('the Familiar client presents guided actions before its custom question and prototype progress', function () {
     $page = file_get_contents(resource_path('js/pages/familiar.tsx'));
     $types = file_get_contents(resource_path('js/types/familiars.ts'));
 
     expect($page)
         ->toContain('RoleGroundedCoachingResponse')
-        ->toContain('Queue Wyrm will answer using your confirmed')
+        ->toContain('Helping you prepare for')
+        ->toContain('Review confirmed role')
+        ->toContain('What should we work on?')
+        ->toContain("label: 'Teach me something'")
+        ->toContain("label: 'Ask me a question'")
+        ->toContain("label: 'Interview prep'")
+        ->toContain("label: 'Practice a role topic'")
+        ->toContain('Current interaction')
+        ->toContain('Have something specific in mind?')
+        ->toContain('Ask your own question')
+        ->toContain('View prototype progress')
+        ->toContain('not a competency or readiness')
+        ->not->toContain('Top responsibilities')
+        ->not->toContain('Top competencies');
+
+    expect(strpos($page, 'What should we work on?'))
+        ->toBeLessThan(strpos($page, 'Current interaction'))
+        ->and(strpos($page, 'Current interaction'))
+        ->toBeLessThan(strpos($page, 'Have something specific in mind?'))
+        ->and(strpos($page, 'Have something specific in mind?'))
+        ->toBeLessThan(strpos($page, '<CardTitle>Progress</CardTitle>'));
+
+    expect($types)
+        ->toContain('export type FamiliarInteractionIntent')
+        ->toContain('export interface FamiliarTopic')
+        ->toContain('export interface FamiliarNextAction')
+        ->toContain('export interface RoleGroundedCoachingResponse')
+        ->toContain('title?: string | null')
+        ->toContain('content: string')
+        ->toContain('next_actions?: FamiliarNextAction[]');
+
+    foreach (FamiliarInteractionIntent::cases() as $case) {
+        expect($types)->toContain("'{$case->value}'");
+    }
+});
+
+test('the Familiar client implements a bounded accessible and recoverable interaction flow', function () {
+    $page = file_get_contents(resource_path('js/pages/familiar.tsx'));
+
+    expect($page)
+        ->toContain('type FamiliarInteractionState =')
+        ->toContain("'idle'")
+        ->toContain("'choosing_topic'")
+        ->toContain("'submitting'")
+        ->toContain("'showing_result'")
+        ->toContain("'error'")
         ->toContain('guideSubmissionInFlight.current || guideForm.processing')
         ->toContain('guideSubmissionInFlight.current = true')
         ->toContain('guideSubmissionInFlight.current = false')
         ->toContain('disabled={guideForm.processing}')
         ->toContain('aria-busy={guideForm.processing}')
+        ->toContain('guideForm.transform(() => request)')
+        ->toContain("submitInteraction({ intent: 'custom_question', question })")
+        ->toContain("intent: 'practice_topic'")
+        ->toContain('topic_id:')
+        ->toContain('topic.id')
+        ->toContain('targetRole.topics.map')
         ->toContain('onSubmit={askGuide}')
         ->toContain('maxLength={1000}')
         ->toContain('Queue Wyrm is thinking…')
-        ->toContain('Queue Wyrm has answered your question.')
-        ->toContain('guideForm.reset()')
         ->toContain('setGuideResponse(null)')
-        ->toContain("intent: 'custom_question'")
         ->toContain('guideResponse.content')
         ->toContain('guideResponse.next_actions')
+        ->toContain('guideResponse.title &&')
+        ->toContain('Retry')
+        ->toContain('lastRequest,')
         ->toContain('role="alert"')
+        ->toContain('role="status"')
         ->toContain('aria-live="polite"')
         ->toContain('Create or confirm a target role')
         ->toContain('reducedMotion={reducedMotion}')
+        ->toContain("'(prefers-reduced-motion: reduce)'")
+        ->toContain('motion-reduce:transition-none')
         ->toContain('motion-safe:animate-bounce')
         ->toContain('w-full max-w-5xl')
+        ->toContain('grid-cols-1 gap-3 min-[380px]:grid-cols-2')
+        ->toContain('overflow-x-hidden')
+        ->toContain('min-h-11')
         ->toContain('min-w-0')
         ->toContain('break-words')
-        ->toContain('Prototype rules, not a readiness')
         ->not->toContain('Complete suggested quest')
-        ->not->toContain('guideResponse.suggested_quest')
-        ->and($types)
-        ->toContain('export interface RoleGroundedCoachingResponse')
-        ->toContain('content: string')
-        ->toContain('next_actions: FamiliarNextAction[]');
-
-    expect(substr_count($page, 'guideForm.reset()'))->toBe(1);
-
-    foreach (FamiliarInteractionIntent::cases() as $case) {
-        expect($types)->toContain("'{$case->value}'");
-    }
+        ->not->toContain('guideResponse.suggested_quest');
 
     foreach (FamiliarReaction::cases() as $case) {
         expect(file_get_contents(resource_path('js/types/progression.ts')))
