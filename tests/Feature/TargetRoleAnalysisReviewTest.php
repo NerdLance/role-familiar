@@ -271,7 +271,7 @@ test('review corrections persist authoritatively without confirming or mutating 
         ->and($review->reviewed_payload['clarifications'][0]['status'])->toBe('answered')
         ->and($review->ambiguity_responses[0]['answer'])->toBe('No direct reports.')
         ->and($review->assumption_decisions[0]['status'])->toBe('corrected')
-        ->and($analysis->fresh()->structured_result)->toBe($originalProposal);
+        ->and($analysis->fresh()->structured_result)->toEqual($originalProposal);
 });
 
 test('confirmation requires saved review and uncertainty acknowledgement without evolving the familiar', function () {
