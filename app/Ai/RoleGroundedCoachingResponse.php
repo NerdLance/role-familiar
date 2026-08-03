@@ -3,109 +3,106 @@
 namespace App\Ai;
 
 use App\Ai\Exceptions\RoleGroundedCoachingException;
-use App\Enums\CoachingNextActionType;
+use App\Enums\FamiliarInteractionIntent;
 use App\Enums\FamiliarReaction;
-use App\Enums\PrototypeQuestKey;
+use App\Support\Familiars\ConfirmedRoleTopic;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 readonly class RoleGroundedCoachingResponse
 {
     /**
-     * @param  array<int, array{topic: string, explanation: string}>  $roleConnections
-     * @param  array<int, array{topic: string, explanation: string}>  $uncertainties
-     * @param  array{type: string, label: string}|null  $suggestedNextAction
+     * @param  array<int, array{type: string, label: string, topic_id?: string}>  $nextActions
      */
     public function __construct(
-        public string $message,
-        public array $roleConnections,
-        public array $uncertainties,
-        public ?array $suggestedNextAction,
+        public string $title,
+        public string $content,
         public FamiliarReaction $reaction,
-        public ?PrototypeQuestKey $suggestedQuest,
+        public array $nextActions,
     ) {}
 
     /** @param array<string, mixed> $structured */
-    public static function fromStructured(array $structured): self
-    {
-        $allowedKeys = [
-            'message',
-            'role_connections',
-            'uncertainties',
-            'suggested_next_action',
-            'reaction',
-            'suggested_quest',
-        ];
-        $actualKeys = array_keys($structured);
-
-        if (array_diff($actualKeys, $allowedKeys) !== []
-            || ! array_key_exists('message', $structured)
-            || ! array_key_exists('reaction', $structured)) {
-            throw new RoleGroundedCoachingException('invalid_structured_output');
+    public static function fromStructured(
+        array $structured,
+        FamiliarInteractionIntent $intent,
+        ?ConfirmedRoleTopic $topic,
+    ): self {
+        if (array_diff(array_keys($structured), ['content']) !== []) {
+            throw new RoleGroundedCoachingException('schema_rejection', [
+                'validation_rule' => 'unexpected_field',
+            ]);
         }
 
-        $structured = self::trimStrings([
-            'role_connections' => [],
-            'uncertainties' => [],
-            'suggested_next_action' => null,
-            'suggested_quest' => null,
-            ...$structured,
-        ]);
+        $structured = self::trimStrings($structured);
         $validator = Validator::make($structured, [
-            'message' => ['required', 'string', 'min:1', 'max:1200'],
-            'role_connections' => ['present', 'array', 'max:3'],
-            'role_connections.*' => ['array:topic,explanation'],
-            'role_connections.*.topic' => ['required', 'string', 'min:1', 'max:160'],
-            'role_connections.*.explanation' => ['required', 'string', 'min:1', 'max:400'],
-            'uncertainties' => ['present', 'array', 'max:3'],
-            'uncertainties.*' => ['array:topic,explanation'],
-            'uncertainties.*.topic' => ['required', 'string', 'min:1', 'max:160'],
-            'uncertainties.*.explanation' => ['required', 'string', 'min:1', 'max:400'],
-            'suggested_next_action' => ['present', 'nullable', 'array:type,label'],
-            'suggested_next_action.type' => ['required_with:suggested_next_action', Rule::enum(CoachingNextActionType::class)],
-            'suggested_next_action.label' => ['required_with:suggested_next_action', 'string', 'min:1', 'max:120'],
-            'reaction' => ['required', Rule::enum(FamiliarReaction::class)],
-            'suggested_quest' => ['present', 'nullable', Rule::enum(PrototypeQuestKey::class)],
+            'content' => ['required', 'string', 'min:1', 'max:1200'],
         ]);
 
         if ($validator->fails()) {
-            throw new RoleGroundedCoachingException('invalid_structured_output');
+            $failed = $validator->failed();
+            $contentFailure = array_key_first($failed['content'] ?? []);
+
+            throw new RoleGroundedCoachingException(
+                $contentFailure === 'Max' ? 'string_length_violation' : 'missing_required_field',
+                ['validation_rule' => is_string($contentFailure) ? $contentFailure : 'unknown'],
+            );
         }
 
         $validated = $validator->validated();
 
         return new self(
-            message: $validated['message'],
-            roleConnections: $validated['role_connections'],
-            uncertainties: $validated['uncertainties'],
-            suggestedNextAction: $validated['suggested_next_action'],
-            reaction: FamiliarReaction::from($validated['reaction']),
-            suggestedQuest: isset($validated['suggested_quest'])
-                ? PrototypeQuestKey::from($validated['suggested_quest'])
-                : null,
+            title: $intent->title($topic?->label),
+            content: $validated['content'],
+            reaction: $intent->reaction(),
+            nextActions: self::nextActions($intent, $topic),
         );
     }
 
     /**
      * @return array{
-     *     message: string,
-     *     role_connections: array<int, array{topic: string, explanation: string}>,
-     *     uncertainties: array<int, array{topic: string, explanation: string}>,
-     *     suggested_next_action: array{type: string, label: string}|null,
+     *     title: string,
+     *     content: string,
      *     reaction: string,
-     *     suggested_quest: string|null
+     *     next_actions: array<int, array{type: string, label: string, topic_id?: string}>
      * }
      */
     public function toArray(): array
     {
         return [
-            'message' => $this->message,
-            'role_connections' => $this->roleConnections,
-            'uncertainties' => $this->uncertainties,
-            'suggested_next_action' => $this->suggestedNextAction,
+            'title' => $this->title,
+            'content' => $this->content,
             'reaction' => $this->reaction->value,
-            'suggested_quest' => $this->suggestedQuest?->value,
+            'next_actions' => $this->nextActions,
         ];
+    }
+
+    /** @return array<int, array{type: string, label: string, topic_id?: string}> */
+    private static function nextActions(
+        FamiliarInteractionIntent $intent,
+        ?ConfirmedRoleTopic $topic,
+    ): array {
+        return match ($intent) {
+            FamiliarInteractionIntent::Teach => self::teachNextActions($topic),
+            FamiliarInteractionIntent::InterviewPrep => [[
+                'type' => FamiliarInteractionIntent::PracticeTopic->value,
+                'label' => 'Practice a role topic',
+            ]],
+            default => [],
+        };
+    }
+
+    /** @return array<int, array{type: string, label: string, topic_id?: string}> */
+    private static function teachNextActions(?ConfirmedRoleTopic $topic): array
+    {
+        $action = [
+            'type' => FamiliarInteractionIntent::AskQuestion->value,
+            'label' => 'Ask me a question',
+        ];
+
+        if ($topic !== null) {
+            $action['topic_id'] = $topic->id;
+        }
+
+        return [$action];
     }
 
     private static function trimStrings(mixed $value): mixed

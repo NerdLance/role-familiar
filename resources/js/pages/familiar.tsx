@@ -15,6 +15,7 @@ import {
 } from '@/routes/target-roles';
 import type {
     FamiliarManifest,
+    FamiliarTopic,
     RoleGroundedCoachingResponse,
 } from '@/types/familiars';
 import type {
@@ -157,6 +158,7 @@ export default function Familiar({
         interview_at: string | null;
         status: 'confirmed';
         context: ConfirmedRoleContext;
+        topics: FamiliarTopic[];
         acknowledgement: string;
     } | null;
 }) {
@@ -169,9 +171,9 @@ export default function Familiar({
         useState<RoleGroundedCoachingResponse | null>(null);
     const [guideError, setGuideError] = useState<string | null>(null);
     const guideForm = useHttp<
-        { message: string },
+        { intent: 'custom_question'; question: string },
         RoleGroundedCoachingResponse
-    >({ message: '' });
+    >({ intent: 'custom_question', question: '' });
     const currentStage = familiar?.stage ?? 'summoned';
     const previousStage = useRef(currentStage);
     const celebrationTimeout = useRef<number | undefined>(undefined);
@@ -325,8 +327,8 @@ export default function Familiar({
     }
 
     function noteQuestionTyping(value: string) {
-        guideForm.setData('message', value);
-        guideForm.clearErrors('message');
+        guideForm.setData('question', value);
+        guideForm.clearErrors('question');
         setGuideError(null);
         setIsTypingQuestion(true);
 
@@ -519,7 +521,7 @@ export default function Familiar({
                                     <Input
                                         aria-describedby={[
                                             'interview-question-help',
-                                            guideForm.errors.message
+                                            guideForm.errors.question
                                                 ? 'interview-question-error'
                                                 : null,
                                             guideError
@@ -529,7 +531,7 @@ export default function Familiar({
                                             .filter(Boolean)
                                             .join(' ')}
                                         aria-invalid={Boolean(
-                                            guideForm.errors.message,
+                                            guideForm.errors.question,
                                         )}
                                         disabled={guideForm.processing}
                                         id="interview-question"
@@ -543,7 +545,7 @@ export default function Familiar({
                                             )
                                         }
                                         placeholder="How can I make a STAR answer more specific?"
-                                        value={guideForm.data.message}
+                                        value={guideForm.data.question}
                                     />
                                     <p
                                         className="text-sm text-muted-foreground"
@@ -553,13 +555,13 @@ export default function Familiar({
                                         coaching grounded in your reviewed role
                                         information.
                                     </p>
-                                    {guideForm.errors.message && (
+                                    {guideForm.errors.question && (
                                         <p
                                             className="text-sm text-destructive"
                                             id="interview-question-error"
                                             role="alert"
                                         >
-                                            {guideForm.errors.message}
+                                            {guideForm.errors.question}
                                         </p>
                                     )}
                                     {guideError && (
@@ -574,7 +576,7 @@ export default function Familiar({
                                     <Button
                                         disabled={
                                             guideForm.processing ||
-                                            guideForm.data.message.trim()
+                                            guideForm.data.question.trim()
                                                 .length === 0
                                         }
                                         type="submit"
@@ -619,101 +621,33 @@ export default function Familiar({
                                                     className="text-sm font-semibold"
                                                     id="coaching-answer-title"
                                                 >
-                                                    Coaching answer
+                                                    {guideResponse.title}
                                                 </h3>
                                                 <p className="text-sm break-words">
-                                                    {guideResponse.message}
+                                                    {guideResponse.content}
                                                 </p>
                                             </div>
                                         </div>
-                                        {guideResponse.role_connections.length >
+                                        {guideResponse.next_actions.length >
                                             0 && (
-                                            <section className="space-y-2">
+                                            <section className="space-y-2 border-t pt-3">
                                                 <h3 className="text-sm font-semibold">
-                                                    Connections to your
-                                                    confirmed role
+                                                    Continue when you are ready
                                                 </h3>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Based on your reviewed role
-                                                    information, not citations
-                                                    to the original listing.
-                                                </p>
-                                                <ul className="space-y-2">
-                                                    {guideResponse.role_connections.map(
-                                                        (connection) => (
+                                                <ul className="space-y-1">
+                                                    {guideResponse.next_actions.map(
+                                                        (action) => (
                                                             <li
-                                                                className="text-sm"
-                                                                key={`${connection.topic}-${connection.explanation}`}
+                                                                className="text-sm text-muted-foreground"
+                                                                key={`${action.type}-${action.topic_id ?? 'default'}`}
                                                             >
-                                                                <span className="font-medium">
-                                                                    {
-                                                                        connection.topic
-                                                                    }
-                                                                    :{' '}
-                                                                </span>
-                                                                <span className="text-muted-foreground">
-                                                                    {
-                                                                        connection.explanation
-                                                                    }
-                                                                </span>
+                                                                {action.label}
                                                             </li>
                                                         ),
                                                     )}
                                                 </ul>
                                             </section>
                                         )}
-                                        {guideResponse.uncertainties.length >
-                                            0 && (
-                                            <section className="space-y-2">
-                                                <h3 className="text-sm font-semibold">
-                                                    Missing or unresolved
-                                                    information
-                                                </h3>
-                                                <ul className="space-y-2">
-                                                    {guideResponse.uncertainties.map(
-                                                        (uncertainty) => (
-                                                            <li
-                                                                className="text-sm"
-                                                                key={`${uncertainty.topic}-${uncertainty.explanation}`}
-                                                            >
-                                                                <span className="font-medium">
-                                                                    {
-                                                                        uncertainty.topic
-                                                                    }
-                                                                    :{' '}
-                                                                </span>
-                                                                <span className="text-muted-foreground">
-                                                                    {
-                                                                        uncertainty.explanation
-                                                                    }
-                                                                </span>
-                                                            </li>
-                                                        ),
-                                                    )}
-                                                </ul>
-                                            </section>
-                                        )}
-                                        {guideResponse.suggested_next_action &&
-                                            guideResponse.suggested_next_action
-                                                .type !== 'none' && (
-                                                <section className="space-y-1 border-t pt-3">
-                                                    <h3 className="text-sm font-semibold">
-                                                        Suggested next action
-                                                    </h3>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {
-                                                            guideResponse
-                                                                .suggested_next_action
-                                                                .label
-                                                        }
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        This is optional and
-                                                        does not change quests,
-                                                        progress, or your role.
-                                                    </p>
-                                                </section>
-                                            )}
                                     </section>
                                 )}
                             </CardContent>

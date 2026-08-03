@@ -6,9 +6,16 @@ use App\Enums\CompetencyCategory;
 use App\Models\RoleAnalysisReview;
 use App\Models\TargetRole;
 use DomainException;
+use Illuminate\Support\Str;
 
 class ConfirmedRoleContext
 {
+    private const int MaximumResponsibilities = 12;
+
+    private const int MaximumCompetencies = 16;
+
+    private const int MaximumReviewItems = 8;
+
     /**
      * @return array{
      *     role_title: string,
@@ -47,26 +54,32 @@ class ConfirmedRoleContext
             : [];
 
         return [
-            'role_title' => $targetRole->title,
-            'company' => $targetRole->company_name,
+            'role_title' => $this->boundedText($targetRole->title, 200),
+            'company' => $targetRole->company_name === null
+                ? null
+                : $this->boundedText($targetRole->company_name, 200),
             'seniority' => $targetRole->seniority?->value,
-            'summary' => $targetRole->role_summary,
-            'responsibilities' => $confirmedResponsibilities->map(fn ($responsibility): array => [
-                'content' => $responsibility->content,
-                'priority' => $responsibility->priority->value,
-            ])->all(),
+            'summary' => $this->boundedText($targetRole->role_summary, 2000),
+            'responsibilities' => $confirmedResponsibilities
+                ->take(self::MaximumResponsibilities)
+                ->map(fn ($responsibility): array => [
+                    'content' => $this->boundedText($responsibility->content, 500),
+                    'priority' => $responsibility->priority->value,
+                ])->all(),
             'competencies' => $confirmedCompetencies
                 ->reject(fn ($competency): bool => $competency->category === CompetencyCategory::Tooling)
+                ->take(self::MaximumCompetencies)
                 ->map(fn ($competency): array => [
-                    'name' => $competency->name,
+                    'name' => $this->boundedText($competency->name, 200),
                     'category' => $competency->category->value,
                     'priority' => $competency->priority->value,
                     'user_confidence' => $competency->user_confidence,
                 ])->values()->all(),
             'technologies' => $confirmedCompetencies
                 ->filter(fn ($competency): bool => $competency->category === CompetencyCategory::Tooling)
+                ->take(self::MaximumCompetencies)
                 ->map(fn ($competency): array => [
-                    'name' => $competency->name,
+                    'name' => $this->boundedText($competency->name, 200),
                     'priority' => $competency->priority->value,
                 ])->values()->all(),
             'interview_focus_areas' => $this->focusAreas($reviewedPayload),
@@ -130,9 +143,9 @@ class ConfirmedRoleContext
             && is_string($focusArea['name'] ?? null)
             && is_string($focusArea['reason'] ?? null))
             ->map(fn (array $focusArea): array => [
-                'name' => $focusArea['name'],
-                'reason' => $focusArea['reason'],
-            ])->values()->all();
+                'name' => $this->boundedText($focusArea['name'], 200),
+                'reason' => $this->boundedText($focusArea['reason'], 500),
+            ])->take(self::MaximumReviewItems)->values()->all();
     }
 
     /**
@@ -152,9 +165,9 @@ class ConfirmedRoleContext
             && is_string($clarification['question'] ?? null)
             && is_string($clarification['reason'] ?? null))
             ->map(fn (array $clarification): array => [
-                'question' => $clarification['question'],
-                'reason' => $clarification['reason'],
-            ])->values()->all();
+                'question' => $this->boundedText($clarification['question'], 300),
+                'reason' => $this->boundedText($clarification['reason'], 500),
+            ])->take(self::MaximumReviewItems)->values()->all();
     }
 
     /** @param array<int, string> $items */
@@ -167,5 +180,10 @@ class ConfirmedRoleContext
         $last = array_pop($items);
 
         return implode(', ', $items).' and '.$last;
+    }
+
+    private function boundedText(string $value, int $limit): string
+    {
+        return (string) Str::of($value)->squish()->limit($limit, '');
     }
 }

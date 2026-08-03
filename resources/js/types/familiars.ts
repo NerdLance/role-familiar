@@ -1,34 +1,35 @@
-import type { FamiliarReaction, PrototypeQuestKey } from '@/types/progression';
+import type { FamiliarReaction } from '@/types/progression';
 
-export type CoachingNextActionType =
-    | 'ask_follow_up'
-    | 'practice_question'
-    | 'explain_topic'
-    | 'review_answer'
-    | 'none';
+export type FamiliarInteractionIntent =
+    | 'teach'
+    | 'ask_question'
+    | 'interview_prep'
+    | 'practice_topic'
+    | 'custom_question';
 
-export interface CoachingRoleConnection {
-    topic: string;
-    explanation: string;
-}
-
-export interface CoachingUncertainty {
-    topic: string;
-    explanation: string;
-}
-
-export interface CoachingNextAction {
-    type: CoachingNextActionType;
+export interface FamiliarTopic {
+    id: string;
     label: string;
+    type:
+        | 'competency'
+        | 'technology'
+        | 'responsibility'
+        | 'focus_area'
+        | 'clarification';
+    priority: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface FamiliarNextAction {
+    type: FamiliarInteractionIntent;
+    label: string;
+    topic_id?: string;
 }
 
 export interface RoleGroundedCoachingResponse {
-    message: string;
-    role_connections: CoachingRoleConnection[];
-    uncertainties: CoachingUncertainty[];
-    suggested_next_action: CoachingNextAction | null;
+    title: string;
+    content: string;
     reaction: FamiliarReaction;
-    suggested_quest: PrototypeQuestKey | null;
+    next_actions: FamiliarNextAction[];
 }
 
 export type FamiliarStageKey = 'stage-1' | 'stage-2' | 'stage-3';

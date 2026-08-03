@@ -227,6 +227,11 @@ test('familiar page exposes only controlled confirmed role props', function () {
         ->has('targetRole.interview_at')
         ->has('targetRole.context.responsibilities', 1)
         ->has('targetRole.context.competencies', 1)
+        ->has('targetRole.topics', 2)
+        ->where('targetRole.topics.0.id', fn (string $id): bool => str_starts_with($id, 'topic_'))
+        ->has('targetRole.topics.0.label')
+        ->has('targetRole.topics.0.type')
+        ->has('targetRole.topics.0.priority')
         ->has('targetRole.acknowledgement')
         ->missing('targetRole.user_id')
         ->missing('targetRole.original_job_listing')
@@ -235,7 +240,8 @@ test('familiar page exposes only controlled confirmed role props', function () {
         ->missing('targetRole.context.provider')
         ->missing('targetRole.context.model'));
 
-    expect($response->getContent())->not->toContain('PRIVATE LISTING');
+    expect($response->getContent())->not->toContain('PRIVATE LISTING')
+        ->not->toContain('source_evidence');
 });
 
 test('confirmation summons only Stage 1 and does not evolve the Queue Wyrm', function () {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\UserFamiliar;
 use App\Support\Familiars\ConfirmedRoleContext;
+use App\Support\Familiars\ConfirmedRoleTopics;
 use App\Support\Familiars\FamiliarAssetCatalog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,6 +16,7 @@ class FamiliarController extends Controller
         Request $request,
         FamiliarAssetCatalog $catalog,
         ConfirmedRoleContext $roleContext,
+        ConfirmedRoleTopics $roleTopics,
     ): Response {
         $targetRole = $request->user()->targetRoles()
             ->active()
@@ -35,6 +37,9 @@ class FamiliarController extends Controller
                     'interview_at' => $targetRole->interview_at?->toIso8601String(),
                     'status' => $targetRole->status->value,
                     'context' => $context,
+                    'topics' => collect($roleTopics->for($targetRole, $context))
+                        ->map(fn ($topic): array => $topic->toArray())
+                        ->all(),
                     'acknowledgement' => $roleContext->acknowledgement($context),
                 ],
         ]);
