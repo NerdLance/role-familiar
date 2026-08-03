@@ -2,6 +2,7 @@
 
 namespace App\Support\Familiars;
 
+use App\Enums\FamiliarStage;
 use InvalidArgumentException;
 use JsonException;
 
@@ -101,6 +102,23 @@ class FamiliarAssetCatalog
     public function publicManifest(): array
     {
         return $this->manifest();
+    }
+
+    /** @return array<string, mixed> */
+    public function roleWorkflowVisual(?FamiliarStage $stage): array
+    {
+        $manifest = $this->publicManifest();
+        $stageKey = match ($stage) {
+            FamiliarStage::Attuned => 'stage-2',
+            FamiliarStage::InterviewReady => 'stage-3',
+            default => 'stage-1',
+        };
+
+        return [
+            'name' => $manifest['name'],
+            'idle' => $manifest['stages'][$stageKey]['idle'],
+            'overlays' => $manifest['overlays'],
+        ];
     }
 
     /**

@@ -11,8 +11,9 @@ class ConfirmTargetRoleController extends Controller
 {
     public function __invoke(ConfirmTargetRoleRequest $request, TargetRole $targetRole, ConfirmTargetRole $confirmTargetRole): RedirectResponse
     {
-        $confirmTargetRole($targetRole);
+        $confirmTargetRole($targetRole, $request->boolean('acknowledge_uncertainty'));
 
-        return to_route('target-roles.show', $targetRole);
+        return to_route('target-roles.show', $targetRole)
+            ->with('role_confirmed', true);
     }
 }

@@ -14,7 +14,7 @@ export default function EditTargetRole({
 }) {
     return (
         <>
-            <Head title={`Edit ${targetRole.title}`} />
+            <Head title={`Edit ${targetRole.title ?? 'target role'}`} />
             <main className="mx-auto w-full max-w-5xl min-w-0 space-y-6 p-4 sm:p-6">
                 <div className="space-y-3">
                     <Button asChild variant="ghost" size="sm">
@@ -24,7 +24,7 @@ export default function EditTargetRole({
                     </Button>
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight break-words">
-                            Edit {targetRole.title}
+                            Edit {targetRole.title ?? 'target role'}
                         </h1>
                         <p className="mt-1 text-muted-foreground">
                             Changes to a confirmed role remain part of its

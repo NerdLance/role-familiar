@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use LogicException;
@@ -32,6 +33,7 @@ use LogicException;
  * @property string|null $failure_summary
  * @property Carbon|null $started_at
  * @property Carbon|null $completed_at
+ * @property-read RoleAnalysisReview|null $review
  */
 #[Fillable([
     'status',
@@ -81,6 +83,12 @@ class RoleAnalysis extends Model
     public function targetRole(): BelongsTo
     {
         return $this->belongsTo(TargetRole::class);
+    }
+
+    /** @return HasOne<RoleAnalysisReview, $this> */
+    public function review(): HasOne
+    {
+        return $this->hasOne(RoleAnalysisReview::class);
     }
 
     public function isPending(): bool

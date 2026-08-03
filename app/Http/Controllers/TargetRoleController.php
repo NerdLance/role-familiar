@@ -8,10 +8,13 @@ use App\Actions\TargetRoles\UpdateTargetRole;
 use App\Enums\CompetencyCategory;
 use App\Enums\Priority;
 use App\Enums\Seniority;
+use App\Enums\TargetRoleStatus;
 use App\Http\Requests\DeleteTargetRoleRequest;
 use App\Http\Requests\StoreTargetRoleRequest;
 use App\Http\Requests\UpdateTargetRoleRequest;
+use App\Models\RoleAnalysis;
 use App\Models\TargetRole;
+use App\Support\Familiars\FamiliarAssetCatalog;
 use BackedEnum;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,13 +56,18 @@ class TargetRoleController extends Controller
         return to_route('target-roles.show', $targetRole);
     }
 
-    public function show(TargetRole $targetRole): Response
+    public function show(Request $request, TargetRole $targetRole, FamiliarAssetCatalog $catalog): Response
     {
         Gate::authorize('view', $targetRole);
         $targetRole->load(['responsibilities', 'competencies']);
+        $analysis = $this->reviewAnalysis($targetRole);
 
         return Inertia::render('target-roles/show', [
             'targetRole' => $this->publicProfile($targetRole),
+            'analysis' => $analysis === null ? null : $this->publicAnalysis($analysis),
+            'options' => $this->options(),
+            'queueWyrm' => $catalog->roleWorkflowVisual($request->user()->familiar()->first()?->stage),
+            'celebrateConfirmation' => $request->session()->pull('role_confirmed', false),
         ]);
     }
 
@@ -117,6 +125,8 @@ class TargetRoleController extends Controller
                 'id' => $responsibility->id,
                 'content' => $responsibility->content,
                 'priority' => $responsibility->priority->value,
+                'source' => $responsibility->source->value,
+                'source_evidence' => $responsibility->source_evidence,
             ])->values(),
             'competencies' => $targetRole->competencies->map(fn ($competency): array => [
                 'id' => $competency->id,
@@ -125,7 +135,42 @@ class TargetRoleController extends Controller
                 'priority' => $competency->priority->value,
                 'source_evidence' => $competency->source_evidence,
                 'user_confidence' => $competency->user_confidence,
+                'source' => $competency->source->value,
             ])->values(),
+        ];
+    }
+
+    private function reviewAnalysis(TargetRole $targetRole): ?RoleAnalysis
+    {
+        if (! in_array($targetRole->status, [
+            TargetRoleStatus::AnalysisPending,
+            TargetRoleStatus::AnalysisFailed,
+            TargetRoleStatus::ReviewRequired,
+        ], true)) {
+            return null;
+        }
+
+        return $targetRole->analyses()->with('review')->latest('id')->first();
+    }
+
+    /** @return array<string, mixed> */
+    private function publicAnalysis(RoleAnalysis $analysis): array
+    {
+        return [
+            'public_id' => $analysis->public_id,
+            'status' => $analysis->status->value,
+            'failure_message' => $analysis->isFailed()
+                ? ($analysis->failure_summary ?? 'The analysis could not be completed.')
+                : null,
+            'proposal' => $analysis->isCompleted() ? $analysis->structured_result : null,
+            'review' => $analysis->review === null
+                ? null
+                : [
+                    'reviewed_payload' => $analysis->review->reviewed_payload,
+                    'ambiguity_responses' => $analysis->review->ambiguity_responses,
+                    'assumption_decisions' => $analysis->review->assumption_decisions,
+                    'applied_at' => $analysis->review->applied_at->toIso8601String(),
+                ],
         ];
     }
 

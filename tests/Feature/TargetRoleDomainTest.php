@@ -337,7 +337,7 @@ test('the target role policy grants owner abilities and denies cross user access
         ->and(TargetRole::query()->ownedBy($otherUser)->whereKey($draft)->exists())->toBeFalse();
 });
 
-test('analysis policy excludes manual pending confirmed and archived roles', function () {
+test('analysis policy allows pending retries but excludes manual confirmed and archived roles', function () {
     $owner = User::factory()->create();
     $policy = app(TargetRolePolicy::class);
     $manual = TargetRole::factory()->for($owner)->manualDraft()->create();
@@ -350,7 +350,7 @@ test('analysis policy excludes manual pending confirmed and archived roles', fun
     ]);
 
     expect($policy->analyze($owner, $manual))->toBeFalse()
-        ->and($policy->analyze($owner, $pending))->toBeFalse()
+        ->and($policy->analyze($owner, $pending))->toBeTrue()
         ->and($policy->analyze($owner, $confirmed))->toBeFalse()
         ->and($policy->analyze($owner, $archived))->toBeFalse();
 });

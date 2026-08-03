@@ -86,7 +86,7 @@ export default function TargetRoleIndex({
                                         )}
                                     </div>
                                     <CardTitle className="break-words">
-                                        {role.title}
+                                        {role.title ?? 'Untitled target role'}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="text-sm text-muted-foreground">

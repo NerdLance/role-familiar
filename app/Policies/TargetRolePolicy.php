@@ -67,9 +67,18 @@ class TargetRolePolicy
             && $targetRole->source_type === TargetRoleSourceType::JobListing
             && in_array($targetRole->status, [
                 TargetRoleStatus::Draft,
+                TargetRoleStatus::AnalysisPending,
                 TargetRoleStatus::ReviewRequired,
                 TargetRoleStatus::AnalysisFailed,
             ], true);
+    }
+
+    public function applyAnalysis(User $user, TargetRole $targetRole): bool
+    {
+        return $this->owns($user, $targetRole)
+            && ! $targetRole->trashed()
+            && $targetRole->source_type === TargetRoleSourceType::JobListing
+            && $targetRole->status === TargetRoleStatus::ReviewRequired;
     }
 
     /**

@@ -2,7 +2,10 @@
 
 namespace App\Actions\TargetRoles;
 
+use App\Enums\RoleAnalysisStatus;
+use App\Enums\TargetRoleSourceType;
 use App\Enums\TargetRoleStatus;
+use App\Models\RoleAnalysis;
 use App\Models\TargetRole;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -10,9 +13,9 @@ use Illuminate\Validation\ValidationException;
 
 class ConfirmTargetRole
 {
-    public function __invoke(TargetRole $targetRole): TargetRole
+    public function __invoke(TargetRole $targetRole, bool $uncertaintyAcknowledged = false): TargetRole
     {
-        return DB::transaction(function () use ($targetRole): TargetRole {
+        return DB::transaction(function () use ($targetRole, $uncertaintyAcknowledged): TargetRole {
             User::query()->whereKey($targetRole->user_id)->lockForUpdate()->firstOrFail();
             $lockedTargetRole = TargetRole::query()->whereKey($targetRole)->lockForUpdate()->firstOrFail();
 
@@ -28,6 +31,20 @@ class ConfirmTargetRole
 
             if (! $lockedTargetRole->competencies()->whereNotNull('name')->where('name', '!=', '')->exists()) {
                 $errors['competencies'] = 'Add at least one competency before confirmation.';
+            }
+
+            if ($lockedTargetRole->source_type === TargetRoleSourceType::JobListing) {
+                $analysis = $lockedTargetRole->analyses()->latest('id')->first();
+
+                if (! $analysis instanceof RoleAnalysis
+                    || $analysis->status !== RoleAnalysisStatus::Completed
+                    || $analysis->review()->doesntExist()
+                    || ! is_string($lockedTargetRole->original_job_listing)
+                    || ! hash_equals($analysis->source_hash, RoleAnalysis::sourceHash($lockedTargetRole->original_job_listing))) {
+                    $errors['analysis'] = 'Save a current analysis review before confirmation.';
+                } elseif ($this->hasUncertainty($analysis) && ! $uncertaintyAcknowledged) {
+                    $errors['acknowledge_uncertainty'] = 'Acknowledge the visible assumptions and ambiguities before confirmation.';
+                }
             }
 
             if ($errors !== []) {
@@ -56,5 +73,13 @@ class ConfirmTargetRole
 
             return $lockedTargetRole->refresh()->load(['responsibilities', 'competencies']);
         });
+    }
+
+    private function hasUncertainty(RoleAnalysis $analysis): bool
+    {
+        $proposal = $analysis->structured_result;
+
+        return is_array($proposal)
+            && (! empty($proposal['assumptions']) || ! empty($proposal['ambiguities']));
     }
 }

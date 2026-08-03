@@ -20,6 +20,12 @@ return [
     'default_for_embeddings' => 'openai',
     'default_for_reranking' => 'cohere',
 
+    'role_analysis' => [
+        'provider' => 'openai',
+        'model' => env('ROLE_FAMILIAR_ROLE_ANALYSIS_MODEL', env('ROLE_FAMILIAR_TEXT_MODEL')),
+        'timeout' => 60,
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Caching
