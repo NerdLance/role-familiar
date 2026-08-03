@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $user_id
+ * @property int|null $target_role_id
  * @property string $public_id
  * @property string $species_key
  * @property string $name
@@ -23,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $attuned_at
  * @property Carbon|null $interview_ready_at
  */
-#[Fillable(['user_id', 'species_key', 'name', 'stage', 'summoned_at', 'attuned_at', 'interview_ready_at'])]
+#[Fillable(['user_id', 'target_role_id', 'species_key', 'name', 'stage', 'summoned_at', 'attuned_at', 'interview_ready_at'])]
 class UserFamiliar extends Model
 {
     /** @use HasFactory<UserFamiliarFactory> */
@@ -44,6 +45,12 @@ class UserFamiliar extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<TargetRole, $this> */
+    public function targetRole(): BelongsTo
+    {
+        return $this->belongsTo(TargetRole::class);
     }
 
     /** @return HasMany<FamiliarQuestProgress, $this> */

@@ -59,14 +59,14 @@ class TargetRoleController extends Controller
     public function show(Request $request, TargetRole $targetRole, FamiliarAssetCatalog $catalog): Response
     {
         Gate::authorize('view', $targetRole);
-        $targetRole->load(['responsibilities', 'competencies']);
+        $targetRole->load(['responsibilities', 'competencies', 'familiar']);
         $analysis = $this->reviewAnalysis($targetRole);
 
         return Inertia::render('target-roles/show', [
             'targetRole' => $this->publicProfile($targetRole),
             'analysis' => $analysis === null ? null : $this->publicAnalysis($analysis),
             'options' => $this->options(),
-            'queueWyrm' => $catalog->roleWorkflowVisual($request->user()->familiar()->first()?->stage),
+            'queueWyrm' => $catalog->roleWorkflowVisual($targetRole->familiar?->stage),
             'celebrateConfirmation' => $request->session()->pull('role_confirmed', false),
         ]);
     }

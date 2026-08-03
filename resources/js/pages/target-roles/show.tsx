@@ -364,6 +364,7 @@ function AnalysisReview({
                             confirmationErrors.acknowledge_uncertainty ??
                             confirmationErrors.analysis ??
                             confirmationErrors.title ??
+                            confirmationErrors.role_summary ??
                             confirmationErrors.responsibilities ??
                             confirmationErrors.competencies
                         }
@@ -403,6 +404,7 @@ function RoleProfile({
 }) {
     const confirmation = useForm<{
         title?: string;
+        role_summary?: string;
         responsibilities?: string;
         competencies?: string;
     }>({});
@@ -512,6 +514,7 @@ function RoleProfile({
             <InputError
                 message={
                     confirmation.errors.title ??
+                    confirmation.errors.role_summary ??
                     confirmation.errors.responsibilities ??
                     confirmation.errors.competencies
                 }

@@ -48,6 +48,10 @@ class ConfirmTargetRoleRequest extends FormRequest
                 $validator->errors()->add('title', 'A title is required before confirmation.');
             }
 
+            if (blank($targetRole->role_summary)) {
+                $validator->errors()->add('role_summary', 'A role summary is required before confirmation.');
+            }
+
             if (! $targetRole->responsibilities()->where('content', '!=', '')->exists()) {
                 $validator->errors()->add('responsibilities', 'Add at least one responsibility before confirmation.');
             }

@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Familiars\SummonPrototypeFamiliar;
 use App\Models\UserFamiliar;
+use App\Support\Familiars\ConfirmedRoleContext;
 use App\Support\Familiars\FamiliarAssetCatalog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,21 +13,29 @@ class FamiliarController extends Controller
 {
     public function __invoke(
         Request $request,
-        SummonPrototypeFamiliar $summon,
         FamiliarAssetCatalog $catalog,
+        ConfirmedRoleContext $roleContext,
     ): Response {
-        $familiar = $summon($request->user())->load('questProgress');
-        $targetRole = $request->user()->targetRoles()->active()->first();
+        $targetRole = $request->user()->targetRoles()
+            ->active()
+            ->with(['familiar.questProgress', 'responsibilities', 'competencies'])
+            ->first();
+        $familiar = $targetRole?->familiar;
+        $context = $targetRole === null ? null : $roleContext->for($targetRole);
 
         return Inertia::render('familiar', [
             'manifest' => $catalog->publicManifest(),
-            'familiar' => $this->publicFamiliar($familiar),
+            'familiar' => $familiar === null ? null : $this->publicFamiliar($familiar),
             'targetRole' => $targetRole === null
                 ? null
                 : [
                     'public_id' => $targetRole->public_id,
                     'title' => $targetRole->title,
+                    'company_name' => $targetRole->company_name,
+                    'interview_at' => $targetRole->interview_at?->toIso8601String(),
                     'status' => $targetRole->status->value,
+                    'context' => $context,
+                    'acknowledgement' => $roleContext->acknowledgement($context),
                 ],
         ]);
     }

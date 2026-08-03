@@ -83,6 +83,8 @@ class ApplyRoleAnalysisProposal
                     'id' => $row->id,
                     ...$competencies[$index]['review'],
                 ])->all(),
+                'interview_focus_areas' => $this->interviewFocusAreas($proposal),
+                'clarifications' => $this->clarifications($proposal, $ambiguities),
             ];
 
             $lockedAnalysis->review()->updateOrCreate([], [
@@ -261,6 +263,67 @@ class ApplyRoleAnalysisProposal
             }
 
             $normalized[] = $row;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $proposal
+     * @return array<int, array{name: string, reason: string}>
+     */
+    private function interviewFocusAreas(array $proposal): array
+    {
+        $focusAreas = is_array($proposal['interview_focus_areas'] ?? null)
+            ? $proposal['interview_focus_areas']
+            : [];
+        $normalized = [];
+
+        foreach ($focusAreas as $focusArea) {
+            if (! is_array($focusArea)
+                || ! is_string($focusArea['focus'] ?? null)
+                || ! is_string($focusArea['rationale'] ?? null)) {
+                continue;
+            }
+
+            $normalized[] = [
+                'name' => $focusArea['focus'],
+                'reason' => $focusArea['rationale'],
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $proposal
+     * @param  array<int, array<string, mixed>>  $decisions
+     * @return array<int, array{question: string, reason: string, status: string, answer: string|null}>
+     */
+    private function clarifications(array $proposal, array $decisions): array
+    {
+        $ambiguities = is_array($proposal['ambiguities'] ?? null) ? $proposal['ambiguities'] : [];
+        $normalized = [];
+
+        foreach ($decisions as $decision) {
+            $index = $decision['index'] ?? null;
+            $ambiguity = is_int($index) && is_array($ambiguities[$index] ?? null)
+                ? $ambiguities[$index]
+                : null;
+
+            if ($ambiguity === null
+                || ! is_string($ambiguity['question'] ?? null)
+                || ! is_string($ambiguity['reason'] ?? null)
+                || ! is_string($decision['status'] ?? null)) {
+                continue;
+            }
+
+            $normalized[] = [
+                'question' => $ambiguity['question'],
+                'reason' => $ambiguity['reason'],
+                'status' => $decision['status'],
+                'answer' => is_string($decision['answer'] ?? null) ? $decision['answer'] : null,
+            ];
         }
 
         return $normalized;

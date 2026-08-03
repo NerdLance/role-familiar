@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use LogicException;
@@ -36,6 +37,7 @@ use LogicException;
  * @property Carbon|null $confirmed_at
  * @property Carbon|null $archived_at
  * @property Carbon|null $deleted_at
+ * @property-read UserFamiliar|null $familiar
  */
 #[Fillable([
     'user_id',
@@ -124,6 +126,12 @@ class TargetRole extends Model
     public function analyses(): HasMany
     {
         return $this->hasMany(RoleAnalysis::class);
+    }
+
+    /** @return HasOne<UserFamiliar, $this> */
+    public function familiar(): HasOne
+    {
+        return $this->hasOne(UserFamiliar::class);
     }
 
     public function isConfirmed(): bool

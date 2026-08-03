@@ -39,6 +39,23 @@ interface Familiar {
     }>;
 }
 
+interface ConfirmedRoleContext {
+    role_title: string;
+    company: string | null;
+    seniority: string | null;
+    summary: string | null;
+    responsibilities: Array<{ content: string; priority: string }>;
+    competencies: Array<{
+        name: string;
+        category: string;
+        priority: string;
+        user_confidence: number | null;
+    }>;
+    technologies: Array<{ name: string; priority: string }>;
+    interview_focus_areas: Array<{ name: string; reason: string }>;
+    unresolved_ambiguities: Array<{ question: string; reason: string }>;
+}
+
 const stageKeys = {
     summoned: 'stage-1',
     attuned: 'stage-2',
@@ -89,17 +106,40 @@ function evolutionBetween(
     return null;
 }
 
+function RoleList({ title, items }: { title: string; items: string[] }) {
+    return (
+        <section className="min-w-0 space-y-2">
+            <h2 className="text-sm font-semibold">{title}</h2>
+            {items.length ? (
+                <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                    {items.map((item) => (
+                        <li className="break-words" key={item}>
+                            {item}
+                        </li>
+                    ))}
+                </ol>
+            ) : (
+                <p className="text-sm text-muted-foreground">None recorded.</p>
+            )}
+        </section>
+    );
+}
+
 export default function Familiar({
     familiar,
     manifest,
     targetRole,
 }: {
-    familiar: Familiar;
+    familiar: Familiar | null;
     manifest: FamiliarManifest;
     targetRole: {
         public_id: string;
         title: string;
+        company_name: string | null;
+        interview_at: string | null;
         status: 'confirmed';
+        context: ConfirmedRoleContext;
+        acknowledgement: string;
     } | null;
 }) {
     const [celebrating, setCelebrating] = useState(false);
@@ -113,7 +153,8 @@ export default function Familiar({
     const guideForm = useHttp<{ message: string }, InterviewGuideResponse>({
         message: '',
     });
-    const previousStage = useRef(familiar.stage);
+    const currentStage = familiar?.stage ?? 'summoned';
+    const previousStage = useRef(currentStage);
     const celebrationTimeout = useRef<number | undefined>(undefined);
     const typingTimeout = useRef<number | undefined>(undefined);
 
@@ -143,7 +184,7 @@ export default function Familiar({
     );
 
     useEffect(() => {
-        if (previousStage.current === familiar.stage) {
+        if (!familiar || previousStage.current === familiar.stage) {
             return;
         }
 
@@ -156,14 +197,14 @@ export default function Familiar({
         triggerCelebration(
             `Your familiar evolved to ${stageLabels[familiar.stage]}.`,
         );
-    }, [familiar.stage, reducedMotion]);
+    }, [familiar, reducedMotion]);
 
     const completedQuestKeys = new Set(
-        familiar.quest_progress
+        (familiar?.quest_progress ?? [])
             .filter((quest) => quest.completed_at !== null)
             .map((quest) => quest.quest_key),
     );
-    const stageKey = stageKeys[familiar.stage];
+    const stageKey = stageKeys[currentStage];
     const activeAnimation = evolution
         ? manifest.evolutions[evolution].animation
         : manifest.stages[stageKey].idle;
@@ -173,12 +214,13 @@ export default function Familiar({
           ? 'listening'
           : null;
 
-    const evolutionProgress =
-        familiar.stage === 'summoned'
-            ? `${completedQuestKeys.size}/2 quests needed for Attuned`
-            : familiar.stage === 'attuned'
-              ? `${completedQuestKeys.size}/4 quests needed for Interview-ready`
-              : 'All prototype evolution rules complete';
+    const evolutionProgress = !familiar
+        ? 'Confirm a target role to begin role-specific progression'
+        : familiar.stage === 'summoned'
+          ? `${completedQuestKeys.size}/2 quests needed for Attuned`
+          : familiar.stage === 'attuned'
+            ? `${completedQuestKeys.size}/4 quests needed for Interview-ready`
+            : 'All prototype evolution rules complete';
 
     function triggerCelebration(message: string) {
         if (celebrationTimeout.current) {
@@ -194,6 +236,10 @@ export default function Familiar({
     }
 
     function completeQuest(quest: (typeof prototypeQuests)[number]) {
+        if (!familiar) {
+            return;
+        }
+
         router.post(
             CompletePrototypeQuestController(familiar).url,
             { quest: quest.key },
@@ -260,183 +306,266 @@ export default function Familiar({
                         Persistent prototype · Prototype rules, not a readiness
                         model
                     </p>
-                    <h1 className="text-3xl font-semibold">{familiar.name}</h1>
+                    <h1 className="text-3xl font-semibold">
+                        {familiar?.name ?? 'Queue Wyrm'}
+                    </h1>
                     <p className="text-muted-foreground">
-                        {stageLabels[familiar.stage]} ·{' '}
-                        {completedQuestKeys.size}/4 prototype quests completed
+                        {stageLabels[currentStage]} · {completedQuestKeys.size}
+                        /4 prototype quests completed
                     </p>
                     <p className="text-sm text-muted-foreground">
                         Evolution progress: {evolutionProgress}
                     </p>
                 </header>
 
-                {targetRole && (
+                {targetRole ? (
                     <Card>
-                        <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
-                            <div>
+                        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 space-y-1">
                                 <p className="text-sm font-medium text-muted-foreground">
                                     Current target role · Confirmed
                                 </p>
-                                <p className="text-lg font-semibold">
-                                    {targetRole.title}
-                                </p>
+                                <CardTitle>{targetRole.title}</CardTitle>
+                                {targetRole.company_name && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {targetRole.company_name}
+                                    </p>
+                                )}
+                                {targetRole.interview_at && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Interview:{' '}
+                                        {new Intl.DateTimeFormat(undefined, {
+                                            dateStyle: 'medium',
+                                            timeStyle: 'short',
+                                        }).format(
+                                            new Date(targetRole.interview_at),
+                                        )}
+                                    </p>
+                                )}
                             </div>
                             <Button asChild variant="outline">
                                 <Link href={editTargetRole(targetRole)}>
                                     Edit target role
                                 </Link>
                             </Button>
+                        </CardHeader>
+                        <CardContent className="grid min-w-0 gap-5 sm:grid-cols-2">
+                            <RoleList
+                                title="Top responsibilities"
+                                items={targetRole.context.responsibilities
+                                    .slice(0, 3)
+                                    .map((item) => item.content)}
+                            />
+                            <RoleList
+                                title="Top competencies"
+                                items={[
+                                    ...targetRole.context.competencies.map(
+                                        (item) => item.name,
+                                    ),
+                                    ...targetRole.context.technologies.map(
+                                        (item) => item.name,
+                                    ),
+                                ].slice(0, 5)}
+                            />
+                            <div className="space-y-2 sm:col-span-2">
+                                <h2 className="text-sm font-semibold">
+                                    Unresolved ambiguities
+                                </h2>
+                                {targetRole.context.unresolved_ambiguities
+                                    .length ? (
+                                    <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                                        {targetRole.context.unresolved_ambiguities.map(
+                                            (item) => (
+                                                <li key={item.question}>
+                                                    {item.question}
+                                                </li>
+                                            ),
+                                        )}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                        No unresolved clarification questions.
+                                    </p>
+                                )}
+                            </div>
+                            <p className="rounded-lg border bg-muted/40 p-3 text-sm sm:col-span-2">
+                                “{targetRole.acknowledgement}”
+                            </p>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card>
+                        <CardContent className="space-y-2 pt-6">
+                            <p className="font-medium">
+                                Queue Wyrm is waiting for a confirmed role.
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Confirm a target role to create a separate Stage
+                                1 Queue Wyrm and begin role-specific
+                                progression.
+                            </p>
                         </CardContent>
                     </Card>
                 )}
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="relative mx-auto max-w-sm">
-                                <SpriteSheetAnimation
-                                    animation={activeAnimation}
-                                    isPlaying
-                                    playbackRate={1}
-                                    reducedMotion={reducedMotion}
-                                    onComplete={() => setEvolution(null)}
-                                />
-                                {activeOverlay && (
-                                    <FamiliarOverlay
-                                        overlay={
-                                            manifest.overlays[activeOverlay]
-                                        }
+                    {familiar && (
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="relative mx-auto max-w-sm">
+                                    <SpriteSheetAnimation
+                                        animation={activeAnimation}
                                         isPlaying
                                         playbackRate={1}
                                         reducedMotion={reducedMotion}
+                                        onComplete={() => setEvolution(null)}
                                     />
-                                )}
-                                {celebrating && (
-                                    <span
-                                        aria-hidden="true"
-                                        className="pointer-events-none absolute inset-0 grid place-items-center text-4xl motion-safe:animate-ping"
-                                    >
-                                        ✦
-                                    </span>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Ask your familiar</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <form className="space-y-3" onSubmit={askGuide}>
-                                <Label htmlFor="interview-question">
-                                    Short interview-preparation question
-                                </Label>
-                                <Input
-                                    aria-describedby="interview-question-help"
-                                    aria-invalid={Boolean(
-                                        guideForm.errors.message,
+                                    {activeOverlay && (
+                                        <FamiliarOverlay
+                                            overlay={
+                                                manifest.overlays[activeOverlay]
+                                            }
+                                            isPlaying
+                                            playbackRate={1}
+                                            reducedMotion={reducedMotion}
+                                        />
                                     )}
-                                    disabled={guideForm.processing}
-                                    id="interview-question"
-                                    maxLength={1000}
-                                    onBlur={() => setIsTypingQuestion(false)}
-                                    onChange={(event) =>
-                                        noteQuestionTyping(event.target.value)
-                                    }
-                                    placeholder="How can I make a STAR answer more specific?"
-                                    value={guideForm.data.message}
-                                />
-                                <p
-                                    className="text-sm text-muted-foreground"
-                                    id="interview-question-help"
-                                >
-                                    Queue Wyrm gives concise, general guidance.
-                                </p>
-                                {guideForm.errors.message && (
-                                    <p className="text-sm text-destructive">
-                                        {guideForm.errors.message}
-                                    </p>
-                                )}
-                                {guideError && (
-                                    <p className="text-sm text-destructive">
-                                        {guideError}
-                                    </p>
-                                )}
-                                <Button
-                                    disabled={
-                                        guideForm.processing ||
-                                        guideForm.data.message.trim().length ===
-                                            0
-                                    }
-                                    type="submit"
-                                >
-                                    {guideForm.processing
-                                        ? 'Queue Wyrm is thinking…'
-                                        : 'Ask Queue Wyrm'}
-                                </Button>
-                            </form>
-
-                            {guideResponse && (
-                                <div className="rounded-lg border bg-muted/40 p-3">
-                                    <div className="flex items-start gap-2">
+                                    {celebrating && (
                                         <span
                                             aria-hidden="true"
-                                            className={
-                                                guideResponse.reaction ===
-                                                'encouraging'
-                                                    ? 'motion-safe:animate-bounce'
-                                                    : guideResponse.reaction ===
-                                                        'challenging'
-                                                      ? 'motion-safe:animate-pulse'
-                                                      : ''
-                                            }
+                                            className="pointer-events-none absolute inset-0 grid place-items-center text-4xl motion-safe:animate-ping"
                                         >
-                                            {guideResponse.reaction ===
-                                            'encouraging'
-                                                ? '✦'
-                                                : guideResponse.reaction ===
-                                                    'challenging'
-                                                  ? '◆'
-                                                  : guideResponse.reaction ===
-                                                      'clarifying'
-                                                    ? '?'
-                                                    : '•'}
+                                            ✦
                                         </span>
-                                        <p className="text-sm">
-                                            {guideResponse.message}
-                                        </p>
-                                    </div>
-                                    {guideResponse.suggested_quest && (
-                                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                                            <p className="text-xs text-muted-foreground">
-                                                Suggested next step: this
-                                                remains optional.
-                                            </p>
-                                            <Button
-                                                onClick={() => {
-                                                    const quest =
-                                                        prototypeQuests.find(
-                                                            (candidate) =>
-                                                                candidate.key ===
-                                                                guideResponse.suggested_quest,
-                                                        );
-
-                                                    if (quest) {
-                                                        completeQuest(quest);
-                                                    }
-                                                }}
-                                                size="sm"
-                                                variant="outline"
-                                            >
-                                                Complete suggested quest
-                                            </Button>
-                                        </div>
                                     )}
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {familiar && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Ask your familiar</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <form className="space-y-3" onSubmit={askGuide}>
+                                    <Label htmlFor="interview-question">
+                                        Short interview-preparation question
+                                    </Label>
+                                    <Input
+                                        aria-describedby="interview-question-help"
+                                        aria-invalid={Boolean(
+                                            guideForm.errors.message,
+                                        )}
+                                        disabled={guideForm.processing}
+                                        id="interview-question"
+                                        maxLength={1000}
+                                        onBlur={() =>
+                                            setIsTypingQuestion(false)
+                                        }
+                                        onChange={(event) =>
+                                            noteQuestionTyping(
+                                                event.target.value,
+                                            )
+                                        }
+                                        placeholder="How can I make a STAR answer more specific?"
+                                        value={guideForm.data.message}
+                                    />
+                                    <p
+                                        className="text-sm text-muted-foreground"
+                                        id="interview-question-help"
+                                    >
+                                        Queue Wyrm gives concise, general
+                                        guidance.
+                                    </p>
+                                    {guideForm.errors.message && (
+                                        <p className="text-sm text-destructive">
+                                            {guideForm.errors.message}
+                                        </p>
+                                    )}
+                                    {guideError && (
+                                        <p className="text-sm text-destructive">
+                                            {guideError}
+                                        </p>
+                                    )}
+                                    <Button
+                                        disabled={
+                                            guideForm.processing ||
+                                            guideForm.data.message.trim()
+                                                .length === 0
+                                        }
+                                        type="submit"
+                                    >
+                                        {guideForm.processing
+                                            ? 'Queue Wyrm is thinking…'
+                                            : 'Ask Queue Wyrm'}
+                                    </Button>
+                                </form>
+
+                                {guideResponse && (
+                                    <div className="rounded-lg border bg-muted/40 p-3">
+                                        <div className="flex items-start gap-2">
+                                            <span
+                                                aria-hidden="true"
+                                                className={
+                                                    guideResponse.reaction ===
+                                                    'encouraging'
+                                                        ? 'motion-safe:animate-bounce'
+                                                        : guideResponse.reaction ===
+                                                            'challenging'
+                                                          ? 'motion-safe:animate-pulse'
+                                                          : ''
+                                                }
+                                            >
+                                                {guideResponse.reaction ===
+                                                'encouraging'
+                                                    ? '✦'
+                                                    : guideResponse.reaction ===
+                                                        'challenging'
+                                                      ? '◆'
+                                                      : guideResponse.reaction ===
+                                                          'clarifying'
+                                                        ? '?'
+                                                        : '•'}
+                                            </span>
+                                            <p className="text-sm">
+                                                {guideResponse.message}
+                                            </p>
+                                        </div>
+                                        {guideResponse.suggested_quest && (
+                                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                                <p className="text-xs text-muted-foreground">
+                                                    Suggested next step: this
+                                                    remains optional.
+                                                </p>
+                                                <Button
+                                                    onClick={() => {
+                                                        const quest =
+                                                            prototypeQuests.find(
+                                                                (candidate) =>
+                                                                    candidate.key ===
+                                                                    guideResponse.suggested_quest,
+                                                            );
+
+                                                        if (quest) {
+                                                            completeQuest(
+                                                                quest,
+                                                            );
+                                                        }
+                                                    }}
+                                                    size="sm"
+                                                    variant="outline"
+                                                >
+                                                    Complete suggested quest
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     <Card>
                         <CardHeader>

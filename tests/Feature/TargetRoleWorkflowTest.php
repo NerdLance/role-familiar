@@ -121,10 +121,12 @@ test('child IDs from another role are rejected without changing either role', fu
 
 test('confirmation requires a complete profile and timestamps every child', function () {
     $user = User::factory()->create();
-    $targetRole = TargetRole::factory()->for($user)->manualDraft()->create();
+    $targetRole = TargetRole::factory()->for($user)->manualDraft()->create(['role_summary' => null]);
 
     $this->actingAs($user)->post(route('target-roles.confirm', $targetRole))
-        ->assertSessionHasErrors(['responsibilities', 'competencies']);
+        ->assertSessionHasErrors(['role_summary', 'responsibilities', 'competencies']);
+
+    $targetRole->update(['role_summary' => 'A user-confirmed role summary.']);
 
     $responsibility = RoleResponsibility::factory()->for($targetRole)->create(['sort_order' => 0]);
     $competency = RoleCompetency::factory()->for($targetRole)->create(['sort_order' => 0]);

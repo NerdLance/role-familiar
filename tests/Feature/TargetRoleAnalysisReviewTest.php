@@ -267,6 +267,8 @@ test('review corrections persist authoritatively without confirming or mutating 
         ->and($role->responsibilities()->sole()->source_evidence)->toBe('design Laravel APIs')
         ->and($role->competencies()->count())->toBe(2)
         ->and($role->competencies()->where('name', 'Laravel')->sole()->category->value)->toBe('tooling')
+        ->and($review->reviewed_payload['interview_focus_areas'][0]['name'])->toBe('System design')
+        ->and($review->reviewed_payload['clarifications'][0]['status'])->toBe('answered')
         ->and($review->ambiguity_responses[0]['answer'])->toBe('No direct reports.')
         ->and($review->assumption_decisions[0]['status'])->toBe('corrected')
         ->and($analysis->fresh()->structured_result)->toBe($originalProposal);
@@ -284,8 +286,9 @@ test('confirmation requires saved review and uncertainty acknowledgement without
 
     expect($role->refresh()->isActive())->toBeTrue()
         ->and($role->confirmed_at)->not->toBeNull()
+        ->and($familiar->fresh()->target_role_id)->toBe($role->id)
         ->and($familiar->fresh()->stage)->toBe(FamiliarStage::Summoned)
-        ->and(FamiliarProgressionEvent::query()->whereBelongsTo($familiar, 'familiar')->count())->toBe(0)
+        ->and(FamiliarProgressionEvent::query()->whereBelongsTo($familiar, 'familiar')->where('event_type', 'familiar_evolved')->count())->toBe(0)
         ->and(FamiliarQuestProgress::query()->whereBelongsTo($familiar, 'familiar')->count())->toBe(0);
 });
 

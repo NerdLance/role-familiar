@@ -7,11 +7,19 @@ use App\Enums\FamiliarStage;
 use App\Enums\ProgressionEventType;
 use App\Enums\PrototypeQuestKey;
 use App\Models\FamiliarQuestProgress;
+use App\Models\TargetRole;
 use App\Models\User;
 use App\Models\UserFamiliar;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery;
 use RuntimeException;
+
+function summonRoleFamiliar(User $user): UserFamiliar
+{
+    $targetRole = TargetRole::factory()->for($user)->confirmed()->create();
+
+    return app(SummonPrototypeFamiliar::class)($user, $targetRole);
+}
 
 test('guests cannot access the persistent familiar page', function () {
     $this->get(route('familiar'))
@@ -21,8 +29,9 @@ test('guests cannot access the persistent familiar page', function () {
 test('summoning creates one default queue wyrm with a public route key and event', function () {
     $user = User::factory()->create();
     $summon = app(SummonPrototypeFamiliar::class);
+    $targetRole = TargetRole::factory()->for($user)->confirmed()->create();
 
-    $familiar = $summon($user);
+    $familiar = $summon($user, $targetRole);
 
     expect($familiar->species_key)->toBe('queue_wyrm')
         ->and($familiar->name)->toBe('Queue Wyrm')
@@ -33,13 +42,14 @@ test('summoning creates one default queue wyrm with a public route key and event
         ->and($familiar->progressionEvents()
             ->where('event_type', ProgressionEventType::FamiliarSummoned)
             ->count())->toBe(1)
-        ->and($summon($user)->id)->toBe($familiar->id);
+        ->and($familiar->target_role_id)->toBe($targetRole->id)
+        ->and($summon($user, $targetRole)->id)->toBe($familiar->id);
 
     expect(UserFamiliar::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 
 test('quest completion is idempotent and creates no duplicate progress or events', function () {
-    $familiar = app(SummonPrototypeFamiliar::class)(User::factory()->create());
+    $familiar = summonRoleFamiliar(User::factory()->create());
     $complete = app(CompletePrototypeQuest::class);
 
     $complete($familiar, PrototypeQuestKey::BehavioralStory);
@@ -56,7 +66,7 @@ test('quest completion is idempotent and creates no duplicate progress or events
 });
 
 test('two distinct completed quests evolve the familiar to attuned once', function () {
-    $familiar = app(SummonPrototypeFamiliar::class)(User::factory()->create());
+    $familiar = summonRoleFamiliar(User::factory()->create());
     $complete = app(CompletePrototypeQuest::class);
 
     $complete($familiar, PrototypeQuestKey::BehavioralStory);
@@ -73,7 +83,7 @@ test('two distinct completed quests evolve the familiar to attuned once', functi
 });
 
 test('all four quests evolve the familiar to interview ready without skipping a stage', function () {
-    $familiar = app(SummonPrototypeFamiliar::class)(User::factory()->create());
+    $familiar = summonRoleFamiliar(User::factory()->create());
     $complete = app(CompletePrototypeQuest::class);
 
     foreach (PrototypeQuestKey::cases() as $quest) {
@@ -111,7 +121,7 @@ test('evolution advances one server-authoritative stage at a time and never down
 });
 
 test('a failed evolution rolls back the quest progress and its event', function () {
-    $familiar = app(SummonPrototypeFamiliar::class)(User::factory()->create());
+    $familiar = summonRoleFamiliar(User::factory()->create());
     $evolve = Mockery::mock(EvolvePrototypeFamiliar::class);
     $evolve->shouldReceive('__invoke')->once()->andThrow(new RuntimeException('stop'));
     $complete = new CompletePrototypeQuest($evolve);
@@ -127,7 +137,7 @@ test('a failed evolution rolls back the quest progress and its event', function 
 
 test('familiar quest writes are owner protected and invalid quests receive validation errors', function () {
     $owner = User::factory()->create();
-    $familiar = app(SummonPrototypeFamiliar::class)($owner);
+    $familiar = summonRoleFamiliar($owner);
 
     $this->actingAs(User::factory()->create())
         ->post(route('familiar.quests.complete', $familiar), [
@@ -146,6 +156,8 @@ test('familiar quest writes are owner protected and invalid quests receive valid
 
 test('the persistent familiar page exposes controlled inertia props without local paths', function () {
     $user = User::factory()->create();
+    $targetRole = TargetRole::factory()->for($user)->confirmed()->create();
+    $familiar = UserFamiliar::factory()->forTargetRole($targetRole)->create();
 
     $response = $this->actingAs($user)->get(route('familiar'));
 
@@ -158,6 +170,9 @@ test('the persistent familiar page exposes controlled inertia props without loca
         ->has('manifest.overlays', 2)
         ->missing('familiar.user_id')
         ->missing('familiar.id')
+        ->where('targetRole.public_id', $targetRole->public_id)
+        ->where('targetRole.context.role_title', $targetRole->title)
+        ->missing('targetRole.context.original_job_listing')
     );
 
     expect($response->getContent())->not->toContain(base_path())

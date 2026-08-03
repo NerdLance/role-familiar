@@ -2,6 +2,7 @@
 
 namespace App\Actions\TargetRoles;
 
+use App\Actions\Familiars\AssignQueueWyrmToTargetRole;
 use App\Enums\RoleAnalysisStatus;
 use App\Enums\TargetRoleSourceType;
 use App\Enums\TargetRoleStatus;
@@ -13,6 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 class ConfirmTargetRole
 {
+    public function __construct(private AssignQueueWyrmToTargetRole $assignQueueWyrm) {}
+
     public function __invoke(TargetRole $targetRole, bool $uncertaintyAcknowledged = false): TargetRole
     {
         return DB::transaction(function () use ($targetRole, $uncertaintyAcknowledged): TargetRole {
@@ -23,6 +26,10 @@ class ConfirmTargetRole
 
             if (blank($lockedTargetRole->title)) {
                 $errors['title'] = 'A title is required before confirmation.';
+            }
+
+            if (blank($lockedTargetRole->role_summary)) {
+                $errors['role_summary'] = 'A role summary is required before confirmation.';
             }
 
             if (! $lockedTargetRole->responsibilities()->whereNotNull('content')->where('content', '!=', '')->exists()) {
@@ -70,8 +77,9 @@ class ConfirmTargetRole
             ]);
             $lockedTargetRole->responsibilities()->update(['user_confirmed_at' => $confirmedAt]);
             $lockedTargetRole->competencies()->update(['user_confirmed_at' => $confirmedAt]);
+            ($this->assignQueueWyrm)($lockedTargetRole->user, $lockedTargetRole);
 
-            return $lockedTargetRole->refresh()->load(['responsibilities', 'competencies']);
+            return $lockedTargetRole->refresh()->load(['responsibilities', 'competencies', 'familiar']);
         });
     }
 

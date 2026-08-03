@@ -36,7 +36,8 @@ class UserFamiliarPolicy
      */
     public function update(User $user, UserFamiliar $userFamiliar): bool
     {
-        return $user->id === $userFamiliar->user_id;
+        return $user->id === $userFamiliar->user_id
+            && $userFamiliar->targetRole()->active()->exists();
     }
 
     /**

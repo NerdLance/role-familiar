@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -29,7 +28,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property-read UserFamiliar|null $familiar
+ * @property-read Collection<int, UserFamiliar> $familiars
  * @property-read Collection<int, TargetRole> $targetRoles
  */
 #[Fillable(['name', 'email', 'password'])]
@@ -53,10 +52,10 @@ class User extends Authenticatable implements PasskeyUser
         ];
     }
 
-    /** @return HasOne<UserFamiliar, $this> */
-    public function familiar(): HasOne
+    /** @return HasMany<UserFamiliar, $this> */
+    public function familiars(): HasMany
     {
-        return $this->hasOne(UserFamiliar::class);
+        return $this->hasMany(UserFamiliar::class);
     }
 
     /** @return HasMany<TargetRole, $this> */

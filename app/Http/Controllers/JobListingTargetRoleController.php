@@ -19,7 +19,7 @@ class JobListingTargetRoleController extends Controller
         Gate::authorize('create', TargetRole::class);
 
         return Inertia::render('target-roles/job-listing/create', [
-            'queueWyrm' => $catalog->roleWorkflowVisual($request->user()->familiar()->first()?->stage),
+            'queueWyrm' => $catalog->roleWorkflowVisual(null),
         ]);
     }
 
