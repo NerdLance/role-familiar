@@ -1,4 +1,4 @@
-import { Head, router, useHttp } from '@inertiajs/react';
+import { Head, Link, router, useHttp } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import AskPrototypeInterviewGuideController from '@/actions/App/Http/Controllers/AskPrototypeInterviewGuideController';
 import CompletePrototypeQuestController from '@/actions/App/Http/Controllers/CompletePrototypeQuestController';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { FamiliarOverlay } from '@/features/familiars/components/familiar-overlay';
 import { SpriteSheetAnimation } from '@/features/familiars/components/sprite-sheet-animation';
 import { familiar as familiarRoute } from '@/routes';
+import { edit as editTargetRole } from '@/routes/target-roles';
 import type { FamiliarManifest } from '@/types/familiars';
 import type {
     FamiliarReaction,
@@ -91,9 +92,15 @@ function evolutionBetween(
 export default function Familiar({
     familiar,
     manifest,
+    targetRole,
 }: {
     familiar: Familiar;
     manifest: FamiliarManifest;
+    targetRole: {
+        public_id: string;
+        title: string;
+        status: 'confirmed';
+    } | null;
 }) {
     const [celebrating, setCelebrating] = useState(false);
     const [evolution, setEvolution] = useState<EvolutionKey>(null);
@@ -262,6 +269,26 @@ export default function Familiar({
                         Evolution progress: {evolutionProgress}
                     </p>
                 </header>
+
+                {targetRole && (
+                    <Card>
+                        <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">
+                                    Current target role · Confirmed
+                                </p>
+                                <p className="text-lg font-semibold">
+                                    {targetRole.title}
+                                </p>
+                            </div>
+                            <Button asChild variant="outline">
+                                <Link href={editTargetRole(targetRole)}>
+                                    Edit target role
+                                </Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <div className="grid gap-4 lg:grid-cols-2">
                     <Card>

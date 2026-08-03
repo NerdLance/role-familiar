@@ -17,10 +17,18 @@ class FamiliarController extends Controller
         FamiliarAssetCatalog $catalog,
     ): Response {
         $familiar = $summon($request->user())->load('questProgress');
+        $targetRole = $request->user()->targetRoles()->active()->first();
 
         return Inertia::render('familiar', [
             'manifest' => $catalog->publicManifest(),
             'familiar' => $this->publicFamiliar($familiar),
+            'targetRole' => $targetRole === null
+                ? null
+                : [
+                    'public_id' => $targetRole->public_id,
+                    'title' => $targetRole->title,
+                    'status' => $targetRole->status->value,
+                ],
         ]);
     }
 

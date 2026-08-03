@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 class SyncRoleCompetencies
 {
     /**
-     * @param  array<int, array{name: string, category: CompetencyCategory|string, priority: Priority|string, source: DataSource|string, source_evidence?: string|null, user_confidence?: int|null, user_confirmed_at?: \DateTimeInterface|null}>  $competencies
+     * @param  array<int, array{id?: int|null, name: string, category: CompetencyCategory|string, priority: Priority|string, source: DataSource|string, source_evidence?: string|null, user_confidence?: int|null, user_confirmed_at?: \DateTimeInterface|null}>  $competencies
      * @return Collection<int, RoleCompetency>
      */
     public function __invoke(TargetRole $targetRole, array $competencies): Collection
@@ -23,6 +23,16 @@ class SyncRoleCompetencies
                 ->whereKey($targetRole->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $submittedIds = collect($competencies)->pluck('id')->filter()->map(fn (mixed $id): int => (int) $id);
+
+            if ($submittedIds->isNotEmpty()) {
+                $ownedIds = $lockedTargetRole->competencies()->whereKey($submittedIds)->pluck('id');
+
+                if ($ownedIds->count() !== $submittedIds->unique()->count()) {
+                    throw new \InvalidArgumentException('A competency does not belong to this target role.');
+                }
+            }
 
             $lockedTargetRole->competencies()->delete();
 

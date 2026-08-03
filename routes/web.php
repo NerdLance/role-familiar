@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\ArchiveTargetRoleController;
 use App\Http\Controllers\AskPrototypeInterviewGuideController;
 use App\Http\Controllers\CompletePrototypeQuestController;
+use App\Http\Controllers\ConfirmTargetRoleController;
 use App\Http\Controllers\FamiliarController;
 use App\Http\Controllers\FamiliarLabController;
+use App\Http\Controllers\RestoreTargetRoleController;
+use App\Http\Controllers\TargetRoleController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -16,6 +20,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('familiar/interview-guide', AskPrototypeInterviewGuideController::class)
         ->middleware('throttle:10,1')
         ->name('familiar.interview-guide');
+
+    Route::post('target-roles/{targetRole}/confirm', ConfirmTargetRoleController::class)->name('target-roles.confirm');
+    Route::post('target-roles/{targetRole}/archive', ArchiveTargetRoleController::class)->name('target-roles.archive');
+    Route::post('target-roles/{targetRole}/restore', RestoreTargetRoleController::class)
+        ->withTrashed()
+        ->name('target-roles.restore');
+    Route::resource('target-roles', TargetRoleController::class)
+        ->parameters(['target-roles' => 'targetRole']);
 });
 
 require __DIR__.'/settings.php';

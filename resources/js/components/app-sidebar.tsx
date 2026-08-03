@@ -1,5 +1,11 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, FlaskConical, FolderGit2, LayoutGrid } from 'lucide-react';
+import {
+    BookOpen,
+    BriefcaseBusiness,
+    FlaskConical,
+    FolderGit2,
+    LayoutGrid,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -14,6 +20,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard, familiar, familiarLab } from '@/routes';
+import { index as targetRolesIndex } from '@/routes/target-roles';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -26,6 +33,11 @@ const mainNavItems: NavItem[] = [
         title: 'Your Familiar',
         href: familiar(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Target Role',
+        href: targetRolesIndex(),
+        icon: BriefcaseBusiness,
     },
     {
         title: 'Familiar Lab',

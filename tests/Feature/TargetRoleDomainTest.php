@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
-test('target role domain tables contain the approved string columns without soft deletes', function () {
+test('target role domain tables contain the approved string columns and soft deletion', function () {
     expect(Schema::hasColumns('target_roles', [
         'public_id',
         'user_id',
@@ -71,7 +71,7 @@ test('target role domain tables contain the approved string columns without soft
             'started_at',
             'completed_at',
         ]))->toBeTrue()
-        ->and(Schema::hasColumn('target_roles', 'deleted_at'))->toBeFalse();
+        ->and(Schema::hasColumn('target_roles', 'deleted_at'))->toBeTrue();
 });
 
 test('a user owns many target roles and children inherit ownership through their target role', function () {
@@ -325,8 +325,8 @@ test('the target role policy grants owner abilities and denies cross user access
         ->and($policy->analyze($owner, $draft))->toBeTrue()
         ->and($policy->archive($owner, $confirmed))->toBeTrue()
         ->and($policy->update($owner, $archived))->toBeFalse()
-        ->and($policy->restore($owner, $archived))->toBeFalse()
-        ->and($policy->delete($owner, $draft))->toBeFalse()
+        ->and($policy->restore($owner, $archived))->toBeTrue()
+        ->and($policy->delete($owner, $draft))->toBeTrue()
         ->and($policy->forceDelete($owner, $draft))->toBeFalse()
         ->and($policy->view($otherUser, $draft))->toBeFalse()
         ->and($policy->update($otherUser, $draft))->toBeFalse()

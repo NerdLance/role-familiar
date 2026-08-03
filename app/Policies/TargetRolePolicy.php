@@ -38,7 +38,9 @@ class TargetRolePolicy
      */
     public function update(User $user, TargetRole $targetRole): bool
     {
-        return $this->owns($user, $targetRole) && ! $targetRole->isArchived();
+        return $this->owns($user, $targetRole)
+            && ! $targetRole->trashed()
+            && ! $targetRole->isArchived();
     }
 
     public function confirm(User $user, TargetRole $targetRole): bool
@@ -51,6 +53,12 @@ class TargetRolePolicy
     public function archive(User $user, TargetRole $targetRole): bool
     {
         return $this->owns($user, $targetRole) && $targetRole->isActive();
+    }
+
+    public function restore(User $user, TargetRole $targetRole): bool
+    {
+        return $this->owns($user, $targetRole)
+            && ($targetRole->trashed() || $targetRole->isArchived());
     }
 
     public function analyze(User $user, TargetRole $targetRole): bool
@@ -69,15 +77,9 @@ class TargetRolePolicy
      */
     public function delete(User $user, TargetRole $targetRole): bool
     {
-        return false;
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, TargetRole $targetRole): bool
-    {
-        return false;
+        return $this->owns($user, $targetRole)
+            && ! $targetRole->trashed()
+            && ! $targetRole->isActive();
     }
 
     /**
