@@ -28,8 +28,7 @@ readonly class RoleGroundedCoachingResponse
     /** @param array<string, mixed> $structured */
     public static function fromStructured(array $structured): self
     {
-        $structured = self::trimStrings($structured);
-        $requiredKeys = [
+        $allowedKeys = [
             'message',
             'role_connections',
             'uncertainties',
@@ -37,6 +36,21 @@ readonly class RoleGroundedCoachingResponse
             'reaction',
             'suggested_quest',
         ];
+        $actualKeys = array_keys($structured);
+
+        if (array_diff($actualKeys, $allowedKeys) !== []
+            || ! array_key_exists('message', $structured)
+            || ! array_key_exists('reaction', $structured)) {
+            throw new RoleGroundedCoachingException('invalid_structured_output');
+        }
+
+        $structured = self::trimStrings([
+            'role_connections' => [],
+            'uncertainties' => [],
+            'suggested_next_action' => null,
+            'suggested_quest' => null,
+            ...$structured,
+        ]);
         $validator = Validator::make($structured, [
             'message' => ['required', 'string', 'min:1', 'max:1200'],
             'role_connections' => ['present', 'array', 'max:3'],
@@ -53,12 +67,8 @@ readonly class RoleGroundedCoachingResponse
             'reaction' => ['required', Rule::enum(FamiliarReaction::class)],
             'suggested_quest' => ['present', 'nullable', Rule::enum(PrototypeQuestKey::class)],
         ]);
-        $actualKeys = array_keys($structured);
 
-        sort($actualKeys);
-        sort($requiredKeys);
-
-        if ($actualKeys !== $requiredKeys || $validator->fails()) {
+        if ($validator->fails()) {
             throw new RoleGroundedCoachingException('invalid_structured_output');
         }
 

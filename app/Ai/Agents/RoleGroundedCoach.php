@@ -50,17 +50,17 @@ INSTRUCTIONS;
             'role_connections' => $schema->array()->max(3)->items($schema->object(fn (JsonSchema $item): array => [
                 'topic' => $item->string()->min(1)->max(160)->required(),
                 'explanation' => $item->string()->min(1)->max(400)->required(),
-            ]))->required(),
+            ])),
             'uncertainties' => $schema->array()->max(3)->items($schema->object(fn (JsonSchema $item): array => [
                 'topic' => $item->string()->min(1)->max(160)->required(),
                 'explanation' => $item->string()->min(1)->max(400)->required(),
-            ]))->required(),
+            ])),
             'suggested_next_action' => $schema->object(fn (JsonSchema $item): array => [
                 'type' => $item->string()->enum(CoachingNextActionType::class)->required(),
                 'label' => $item->string()->min(1)->max(120)->required(),
-            ])->nullable()->required(),
+            ])->nullable(),
             'reaction' => $schema->string()->enum(FamiliarReaction::class)->required(),
-            'suggested_quest' => $schema->string()->enum(PrototypeQuestKey::class)->nullable()->required(),
+            'suggested_quest' => $schema->string()->enum(PrototypeQuestKey::class)->nullable(),
         ];
     }
 }

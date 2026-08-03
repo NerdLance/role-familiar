@@ -2,11 +2,11 @@
 PLANNING-ASSET-ID: RF-CURRENT-FUNCTIONALITY-WIREFRAME
 SNAPSHOT-DATE: 2026-08-03
 VERSION: v1
-STATUS: CURRENT
+STATUS: SUPERSEDED
 REPOSITORY-REVISION: e20f76a
 SUPERSEDES: none
-SUPERSEDED-BY: none
-LAST-REVIEWED: 2026-08-03T06:44:51-04:00
+SUPERSEDED-BY: 2026-08-03-current-functionality-wireframe-v2.md
+LAST-REVIEWED: 2026-08-03T09:56:34-04:00
 
 FUTURE EDITOR NOTE:
 Do not silently modernize this snapshot. Create a new date-stamped version,
@@ -15,7 +15,8 @@ mark this file SUPERSEDED, and update docs/planning/README.md.
 
 # Role Familiar current-functionality wireframe
 
-**Snapshot:** August 3, 2026 · **Version:** v1 · **Status:** CURRENT  
+**Snapshot:** August 3, 2026 · **Version:** v1 · **Status:** SUPERSEDED
+
 **Repository revision inspected:** `e20f76a`
 
 ## Reading key

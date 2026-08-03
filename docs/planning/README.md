@@ -1,8 +1,8 @@
 <!--
 PLANNING-ASSET-REGISTRY: ROLE-FAMILIAR
-REGISTRY-VERSION: 2026-08-03-v1
+REGISTRY-VERSION: 2026-08-03-v2
 STATUS: CURRENT
-LAST-REVIEWED: 2026-08-03T06:44:51-04:00
+LAST-REVIEWED: 2026-08-03T09:56:34-04:00
 
 VERSIONING RULE:
 - Never silently replace a dated planning snapshot.
@@ -19,8 +19,8 @@ This folder holds date-stamped snapshots of the application's product surface. T
 
 | Asset                                                                                    | Snapshot   | Version | Status      | Purpose                                                                             |
 | ---------------------------------------------------------------------------------------- | ---------- | ------- | ----------- | ----------------------------------------------------------------------------------- |
-| [Current-functionality wireframe](2026-08-03-current-functionality-wireframe-v1.md)      | 2026-08-03 | v1      | **CURRENT** | Low-fidelity map of pages, user flows, working states, prototypes, and boundaries   |
-| [Current-functionality outline contract](2026-08-03-current-functionality-outline-v1.md) | 2026-08-03 | v1      | **CURRENT** | Evidence-based inventory, invariants, gaps, and recommended next step for each area |
+| [Current-functionality wireframe](2026-08-03-current-functionality-wireframe-v2.md)      | 2026-08-03 | v2      | **CURRENT** | Low-fidelity map of pages, user flows, working states, prototypes, and boundaries   |
+| [Current-functionality outline contract](2026-08-03-current-functionality-outline-v2.md) | 2026-08-03 | v2      | **CURRENT** | Evidence-based inventory, invariants, gaps, and recommended next step for each area |
 
 ## Status markings
 

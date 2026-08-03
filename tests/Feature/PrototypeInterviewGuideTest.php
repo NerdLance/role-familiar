@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Prompts\AgentPrompt;
-use RuntimeException;
 
 /** @return array<string, mixed> */
 function validRoleGroundedCoachingResponse(array $overrides = []): array
@@ -125,21 +124,35 @@ test('the Familiar client uses the bounded coaching contract and accessible one-
         ->toContain('disabled={guideForm.processing}')
         ->toContain('aria-busy={guideForm.processing}')
         ->toContain('onSubmit={askGuide}')
+        ->toContain('maxLength={1000}')
+        ->toContain('Queue Wyrm is thinking…')
+        ->toContain('Queue Wyrm has answered your question.')
+        ->toContain('guideForm.reset()')
+        ->toContain('setGuideResponse(null)')
         ->toContain('Coaching answer')
         ->toContain('Connections to your')
+        ->toContain('not citations')
         ->toContain('Missing or unresolved')
         ->toContain('Suggested next action')
+        ->toContain('This is optional and')
         ->toContain('role="alert"')
         ->toContain('aria-live="polite"')
         ->toContain('Create or confirm a target role')
         ->toContain('reducedMotion={reducedMotion}')
         ->toContain('motion-safe:animate-bounce')
+        ->toContain('w-full max-w-5xl')
+        ->toContain('min-w-0')
+        ->toContain('break-words')
+        ->toContain('Prototype rules, not a readiness')
         ->not->toContain('Complete suggested quest')
+        ->not->toContain('guideResponse.suggested_quest')
         ->and($types)
         ->toContain('export interface RoleGroundedCoachingResponse')
         ->toContain('role_connections: CoachingRoleConnection[]')
         ->toContain('uncertainties: CoachingUncertainty[]')
         ->toContain('suggested_next_action: CoachingNextAction | null');
+
+    expect(substr_count($page, 'guideForm.reset()'))->toBe(1);
 
     foreach (CoachingNextActionType::cases() as $case) {
         expect($types)->toContain("'{$case->value}'");
